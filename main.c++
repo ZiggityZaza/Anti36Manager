@@ -447,3 +447,60 @@ namespace joat { // Jack of all trades (Helper functions and classes)
       }
   };
 };
+
+
+
+
+namespace Anti36Manager {
+  // This namespace contains all the necessary classes, variables and whatnot for the A36M
+
+  // Default values and Configs
+  std::ostream& console = std::cout;
+  using index_t = unsigned short;
+  static constexpr const index_t INDEX_ERROR_VALUE = ~index_t(0); // Error value for index_t (largest possible value)
+
+  enum MediaType : char {
+    IMAGE = 'I',
+    VIDEO = 'V',
+    NONE = 'N',
+    BOTH = 'B'
+  };
+
+
+  // Portrayal structs & classes
+  struct Origin {
+    const std::string name;
+    const joat::VirtualPath *const where;
+  };
+  struct Persona {
+    const Origin *const origin;
+    const std::string name;
+    const joat::VirtualPath *const where;
+  };
+  struct Portrayal {
+    index_t index; // Can change incase of index gap fixing
+    const Persona *const persona;
+    const std::deque<char> tags;
+    joat::VirtualPath* where;
+  };
+
+
+  // Constants
+  static constexpr const char* ANTI36_FOLDER = "E:\\Anti36Local";
+  static constexpr const char* UNSORTED_FOLDER_PATH = "E:\\$unsorted";
+
+
+  // Template for portrayal HTML
+  static constexpr const char* HTML_HEADER[3] = {
+    "<h2 style=\"color: white\">Found ", /* AMOUNT_OF_PORTAYALS_FOUND */ " portrayals for [", /* FILTERS */ "]. Enjoy!</h2> <body style=\"background-color:#330000;\">\n"};
+  static constexpr const char* HTML_VIDEO[2] = {"<video src=\"", /* FULL_FILE_PATH */ "\" controls width=\"300\"></video>\n"};
+  static constexpr const char* HTML_IMAGE[2] = {"<img src=\"", /* FULL_FILE_PATH */ "\" controls width=\"300\">\n"};
+  static constexpr const char* HTML_OUTPUT_FILE = "E:\\output.html";
+
+
+
+
+int main() {
+  joat::TimeStamp startUpTime;
+  std::cout << startUpTime << '\n';
+}
