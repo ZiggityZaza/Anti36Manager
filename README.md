@@ -2,8 +2,8 @@
 Useless program to sort and manage your favorite "appropriate" pictures/videos. Sorted by origins, personas, tags and media types.
 
 
-![example1](brazyimages\example1.jpg)
-![example2](brazyimages\example2.jpg)
+![example1](brazyimages\example1.png)
+![example2](brazyimages\example2.png)
 (I randomly picked some images from my computer)
 
 #
