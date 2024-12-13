@@ -7,7 +7,7 @@ Useless program to sort and manage your favorite "appropriate" pictures/videos. 
 (I randomly picked some images from my computer)
 
 #
-### What is this? <img src="brazyimages\sexy.jpg" width="17"/>
+### What is this? <img src="brazyimages/sexy.jpg" width="17"/>
 Overall it's a turbo-lightweight console based program which helps you store images/videos in a structured way. The main feature though is to give you the option to bundle everything and have them displayed to you.
 
 <details>
@@ -16,7 +16,7 @@ It's like a gallery but with more of steps and more control. If you are still co
 </details>
 <details>
 <summary><i>Wait, why doesn't it have a/an proper UI?</i> <b>🤨🤨🤨</b></summary>
-Time/effort to benefit ratio. I'm not a UI designer nor do I have the time to learn how to make a proper UI. I'm just a weirdo who wants to make a program that works. If you want to make a UI for this program, go ahead. I'll be happy to see it... Like really happy... <img src="brazyimages\sexy.jpg" width="17"/>
+Time/effort to benefit ratio. I'm not a UI designer nor do I have the time to learn how to make a proper UI. I'm just a weirdo who wants to make a program that works. If you want to make a UI for this program, go ahead. I'll be happy to see it... Like really happy... <img src="brazyimages/sexy.jpg" width="17"/>
 </details>
 
 
@@ -121,7 +121,7 @@ It's pretty difficult to accidentally crash the program. But if you do, here are
 _Believe it or not, the real goal for this program wasn't to manage inappropriate things but later on, some folks made fun of my code thinking it was to manage inappropriate things. So I decided to make it a reality._
 
 _Here is my inspiration for this project:_
-![Inspiration](brazyimages\image.png)
+![Inspiration](brazyimages/image.png)
 </details>
 <details>
 <summary><i>Why did the Anti36Manager repo start at version 1.4?</i></summary>
