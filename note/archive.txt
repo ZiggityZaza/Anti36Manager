@@ -1,0 +1,8 @@
+Feature request:
+When sorting images, one might forget (especially on larger scale) that you already sorted a similar image. As in now the program doesn't check if you already added a smiliar image before.
+
+Outcome:
+I'd like to implement a way to have some sort of user-friendly hint before the user decides to context to an image and have it sorted so duplicates can be avoided.
+
+Alternatives:
+None

@@ -110,6 +110,9 @@ It's pretty difficult to accidentally crash the program. But if you do, here are
         <li>Deleting files/folders while the program is running. The program doesn't check if the file/folder exists before trying to access it.
         <ul>
             <li>If you wan't to make a change to the Anti36Local folders, just restart the program.
+        </ul>
+        <li>A portrayal with an index higher than the supported index_t value. The program will thrown an exception explaining the issue.
+        
 
 </details>
 
