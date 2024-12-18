@@ -58,6 +58,16 @@ static constexpr const char* ASCII_ART = R"(
 
 
 namespace joat { // Jack of all trades (Helper functions and classes)
+    template <typename NumberTypeLeft, typename NumberTypeRight>
+    static NumberTypeLeft random(const NumberTypeLeft &min, const NumberTypeRight &max) {
+      /*
+        This function takes a minimum and a maximum value and returns a random number
+        between the two values. The function is inclusive of the minimum and maximum values.
+      */
+
+      return min + (rand() % (max - min + 1));
+    }
+
     static double image_similarity(const std::string &image1, const std::string &image2) {
       /*
         This function takes two images and calculates the similarity between them.
@@ -213,7 +223,6 @@ namespace joat { // Jack of all trades (Helper functions and classes)
       };
 
       static constexpr short ERROR_CODE = -1;
-      static constexpr short NOT_SUPPORTED_CODE = -2;
       Weekday weekday = ERROR_DAY;
       short day = ERROR_CODE;
       short month = ERROR_CODE;
@@ -428,11 +437,16 @@ namespace Anti36Manager {
   static constexpr const char* SUBSUBLINE = "\n   > "; // Subsubsection
   static constexpr const char* WSUBSUBLINE = "   > "; // Subsubsection without creating a new line
   static constexpr const char* CRAZYSUBLINE = "\n    > "; // Subsubsubsection
+  static constexpr const char* TURBOCRAZYSUBLINE = "\n     > "; // Subsubsubsubsection
 
   // Default values and Configs
   std::ostream& console = std::cout;
   using index_t = unsigned short;
   static constexpr bool DEBUGGING = true;
+  static constexpr char WELCOME_SCREEN_SORTING_OPTION = '0';
+  static constexpr char WELCOME_SCREEN_VIEWING_OPTION = '1';
+  static constexpr char WELCOME_SCREEN_SUMMARY_OPTION = '2';
+  static constexpr char WELCOME_SCREEN_ERROR_OPTION = -1;
 
   enum MediaType : char {
     IMAGE = 'I',
@@ -555,6 +569,7 @@ namespace Anti36Manager {
 
 
 
+
   class Main {
     /*
       The difference between the namespace and the class is that the class
@@ -584,6 +599,7 @@ namespace Anti36Manager {
     // Other variables
     Persona* currentPersona = nullptr;
     std::deque<joat::VirtualPath> unsortedPortrayals;
+    std::deque<Portrayal*> collection;
 
 
     // Helper methods (usually silent methods)
@@ -788,6 +804,119 @@ namespace Anti36Manager {
       }
     }
 
+
+
+    void summarize() {
+      /*
+        This function summarizes the data in the portrayals deque
+        and prints it to the console.
+      */
+
+      console << "This is what we have so far:";
+
+      // Pillar containers
+      console << SUBLINE << folders.size() << " folders:";
+      for (const joat::VirtualPath& folder : folders) {
+        console << SUBSUBLINE << folder << " @ " << folder.lastInteraction;
+      }
+      console << SUBLINE << files.size() << " files:";
+      for (const joat::VirtualPath& file : files) {
+        console << SUBSUBLINE << file << " @ " << file.lastInteraction;
+      }
+      console << SUBLINE << origins.size() << " origins with " << personas.size() << " personas:";
+      // Go through every origin
+      for (Origin& origin : origins) {
+        console << SUBSUBLINE << origin.name << " with " << personasByOrigin[&origin].size() << " personas:";
+        // Go through every persona
+        for (Persona* persona : personasByOrigin[&origin]) {
+          console << CRAZYSUBLINE << persona->name << " with " << portrayalsByPersona[persona].size() << " portrayals:";
+          // Finally, print the portrayals
+          for (Portrayal* portrayal : portrayalsByPersona[persona]) {
+            console << TURBOCRAZYSUBLINE << portrayal->where->filename();
+          }
+        }
+      }
+      console << '\n';
+
+      // Filter containers
+      console << SUBLINE << "Filters (should be empty):";
+      console << SUBSUBLINE << "Tags with " << byTagsFilter.size() << " tags:";
+      console << SUBSUBLINE << "Origins with " << byOriginsFilter.size() << " origins:";
+      console << SUBSUBLINE << "Type: " << byTypeFilter;
+      console << '\n';
+
+      // Other containers
+      console << SUBLINE << "Current persona: ";
+      if (currentPersona) {
+        console << currentPersona->name << " from " << currentPersona->origin->name;
+      } else {
+        console << "none";
+      }
+      console << SUBLINE << "Unsorted portrayals: ";
+      for (const joat::VirtualPath& unsortedPortrayal : unsortedPortrayals) {
+        console << SUBSUBLINE << unsortedPortrayal;
+      }
+      console << '\n';
+    }
+
+
+
+    void set_collection_based_on_filters() {
+      /*
+        In this function, the collection deque will be filled with the portrayals
+        that fit the filters set by the user. The filters are stored in the
+        byOriginsFilter, byTagsFilter, and byTypeFilter deques. The filters are
+        exclusive, meaning that the portrayals have to fit all the filters to be
+        added to the collection deque.
+
+        In case a byFilterXY is empty:
+          - If byOriginsFilter are empty, all Origins and their personas are selected
+          - If byTagsFilter is empty, tags are ignored
+          - If byTypeFilter is both, all media is selected
+            - If byTypeFilter is none, an exception is thrown
+      */
+
+      collection.clear();
+
+
+      // Quick check
+      if (byTypeFilter == NONE) {
+        throw std::runtime_error("The type filter is set to NONE. No media can be selected.");
+      }
+      if (byOriginsFilter.empty()) {
+        byOriginsFilter = personasByOrigin;
+      }
+
+
+      for (const auto& [origin, personas] : byOriginsFilter) {
+        for (Persona* persona : personas) {
+          for (Portrayal* portrayal : portrayalsByPersona[persona]) {
+
+            bool fitsFilters = true;
+
+            if (!byTagsFilter.empty()) {
+              // If the portrayal doesn't have a tag from the byTagsFilter deque, it doesn't fit the filters
+              for (char tag : byTagsFilter) {
+                if (!joat::does_this_exist_in_deque(portrayal->tags, tag)) {
+                  fitsFilters = false;
+                  break;
+                }
+              }
+            }
+
+            if (byTypeFilter != BOTH) {
+              if (EXTENSION_TO_MEDIA.at(portrayal->where->extension()) != byTypeFilter) {
+                fitsFilters = false;
+              }
+            }
+
+            if (fitsFilters) {
+              collection.push_back(portrayal);
+            }
+          }
+        }
+      }
+    }
 
 
     // Setup methods
@@ -1233,13 +1362,74 @@ namespace Anti36Manager {
 
 
 
+    // User interface methods
+    char welcome() {
+
+      console << '\n' << LINE << ASCII_ART << LINE << '\n';
+      console << "I was planning on planting a randomized message-of-the-day here.";
+      if (DEBUGGING) {
+        console << ".. (DEBUGGING)";
+      }
+      console << SUBLINE << '\'' << WELCOME_SCREEN_SORTING_OPTION << "' -> sort files in \"" << UNSORTED_FOLDER_PATH << '"';
+      console << SUBLINE << '\'' << WELCOME_SCREEN_VIEWING_OPTION << "' -> view portrayals by filters";
+      console << SUBLINE << '\'' << WELCOME_SCREEN_SUMMARY_OPTION << "' -> sum up all gathered data";
+
+      console << "\n > ";
+      return joat::question()[0];
+    }
+
+
+
+    // Sorting methods
+    void set_currentPersona() {
+      /*
+        This function will ask the user to pick a origin and then a persona
+        from that origin. It will then set the currentPersona variable to the
+        chosen persona.
+      */
+
+
+      // Define variables
+      std::string userInput;
+      currentPersona = nullptr;
+      Origin* originChoiceResult;
+
+
+      // Get origin choice
+      console << get_origin_chart(false, true) << "\n > ";
+
+      while (true) {
+        userInput = joat::question();
+        originChoiceResult = origin_exists(userInput);
+        if (originChoiceResult != &ORIGIN_ERROR_TYPE) {
+          break;
+        } else if (userInput.empty()) {
+          return;
+        }
+        std::cerr<< "?> ";
+      }
+
+
+      // Get persona choice
+      console << get_persona_chart(originChoiceResult, false) << "\n > "; // Display the personas with the amount of portrayals
+
+      while (true) {
+        userInput = joat::question();
+        currentPersona = persona_exists(userInput, originChoiceResult); // borrowing global variable for definition without copying
+        if (userInput.empty()) {
+          return;
+        } else if (currentPersona != &PERSONA_ERROR_TYPE) {
+          break;
+        }
+        std::cerr<< "?> ";
+      }
+    }
+
+
+
+
     public:
       explicit Main() {
-
-        // Get startup time
-        using namespace std::chrono;
-        time_point<system_clock> start = system_clock::now();
-
 
         // Setup
         console << NEXT;
@@ -1262,12 +1452,35 @@ namespace Anti36Manager {
         full_index_gaps_fix();
 
 
-        // Print the time it took to start the program
-        time_point<system_clock> end = system_clock::now();
-        duration<double> elapsed_seconds = end - start;
-        console << NEXT << "It took " << elapsed_seconds.count() << " seconds to read and initialize everything.";
+        // The user interface
+        while (true) {
+          char userInput = welcome();
 
-        std::cin.get();
+          switch (userInput) {
+            case WELCOME_SCREEN_SORTING_OPTION: {
+              set_currentPersona();
+              break;
+            }
+
+            case WELCOME_SCREEN_VIEWING_OPTION: {
+              break;
+            }
+
+            case WELCOME_SCREEN_SUMMARY_OPTION: {
+              summarize();
+              break;
+            }
+
+            default: {
+              console << "Invalid input. Please try again.";
+              continue;
+            }
+          }
+
+          // Pause
+          std::cout << "Press enter to continue...";
+          std::cin.get();
+        }
       }
   };
 };
