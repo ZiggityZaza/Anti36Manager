@@ -98,7 +98,7 @@ It's pretty difficult to accidentally crash the program. But if you do, here are
 ####
 <details>
 <summary><i>It says some dll is missing</i></summary>
-    <b>WHAT?!</b> Oh yeah I forgot. Use "-static" when compiling the program.
+    <b>WHAT?!</b> Don't forget to use "-static" when compiling the program.
 </details>
 
 ####
@@ -109,9 +109,9 @@ It's pretty difficult to accidentally crash the program. But if you do, here are
         <li>Using non-ascii characters in any part of the program or Anti36Local folders. std::filesystem::path string supports characters larger than ascii but the joat::VirtualPath object (to which the fs::path is converted to) doesn't.
         <li>Deleting files/folders while the program is running. The program doesn't check if the file/folder exists before trying to access it.
         <ul>
-            <li>If you wan't to make a change to the Anti36Local folders, just restart the program.
+            <li>If you wan't to make a change to the Anti36Local folders, go to the main menu and press enter.
         </ul>
-        <li>A portrayal with an index higher than the supported index_t value. The program will thrown an exception explaining the issue.
+        <li>Adding another portrayal (using the sorting option) while the selected persona is already at full capacity will add a +1 higher than the amount index_t can hold leading to a crash without an exception.
         
 
 </details>

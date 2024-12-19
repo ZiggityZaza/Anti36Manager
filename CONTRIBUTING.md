@@ -131,7 +131,8 @@ Stay away from any kind of dynamic allocation. Not even smart pointers. Trust th
     <li>"or" instead of "||"
     <li>"and" instead of "&&"
     <li>A tradition in this project is to change the ASCII art after each major update (1.4 -> 1.5)
-
+    <li>I discourage three way operators
+    <li>I also discourage lambda functions except the ones in c++23
 </ul>
 </details>
 

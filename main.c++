@@ -58,16 +58,6 @@ static constexpr const char* ASCII_ART = R"(
 
 
 namespace joat { // Jack of all trades (Helper functions and classes)
-    template <typename NumberTypeLeft, typename NumberTypeRight>
-    static NumberTypeLeft random(const NumberTypeLeft &min, const NumberTypeRight &max) {
-      /*
-        This function takes a minimum and a maximum value and returns a random number
-        between the two values. The function is inclusive of the minimum and maximum values.
-      */
-
-      return min + (rand() % (max - min + 1));
-    }
-
     static double image_similarity(const std::string &image1, const std::string &image2) {
       /*
         This function takes two images and calculates the similarity between them.
@@ -83,25 +73,28 @@ namespace joat { // Jack of all trades (Helper functions and classes)
       return 0.0;
     }
 
+
     static bool cmd(const std::string &command) {
       /*
         This function takes a command and executes it in the command prompt.
         The function returns true if the command was executed successfully and false otherwise.
-
-        Note:
-          - The command is executed in the command prompt
-          - The command is executed in the same directory as the executable
-          - The command is executed in the same directory as the executable
       */
 
       // Placeholder
       return false;
     }
 
+
     static constexpr uint8_t MAX_GENERAL_STRING_LENGTH = 50;
     static std::string shorten_str_if_necessary(const std::string &str) {
         if (str.length() > MAX_GENERAL_STRING_LENGTH) {
-        return str.substr(0, MAX_GENERAL_STRING_LENGTH - 3) + "...";
+          return str.substr(0, MAX_GENERAL_STRING_LENGTH - 3) + "...";
+        }
+        return str;
+    }
+    static std::string shorten_str_if_necessary_reverse(const std::string &str) {
+        if (str.length() > MAX_GENERAL_STRING_LENGTH) {
+          return "..." + str.substr(str.length() - MAX_GENERAL_STRING_LENGTH + 3); // +3 for the "..."
         }
         return str;
     }
@@ -123,7 +116,7 @@ namespace joat { // Jack of all trades (Helper functions and classes)
       for (const std::string &string : strings) {
         longestStringLenght = std::max(longestStringLenght, string.length());
       }
-      longestStringLenght++; // Add a space between the strings
+      ++longestStringLenght; // Add a space between the strings
 
       for (std::string &string : strings) {
         string.resize(longestStringLenght, ' ');
@@ -135,7 +128,7 @@ namespace joat { // Jack of all trades (Helper functions and classes)
       for (const std::string &string : strings) {
         result += string;
         if (counter < (MAX_CONSOLE_WIDTH / longestStringLenght)) {
-          counter++;
+          ++counter; // Hehe c++
         } else {
           counter = 1;
           result += '\n';
@@ -437,7 +430,9 @@ namespace Anti36Manager {
   static constexpr const char* SUBSUBLINE = "\n   > "; // Subsubsection
   static constexpr const char* WSUBSUBLINE = "   > "; // Subsubsection without creating a new line
   static constexpr const char* CRAZYSUBLINE = "\n    > "; // Subsubsubsection
+  static constexpr const char* WCRAZYSUBLINE = "    > "; // Subsubsubsection without creating a new line
   static constexpr const char* TURBOCRAZYSUBLINE = "\n     > "; // Subsubsubsubsection
+  static constexpr const char* WTURBOCRAZYSUBLINE = "     > "; // Subsubsubsubsection without creating a new line
 
   // Default values and Configs
   std::ostream& console = std::cout;
@@ -593,12 +588,17 @@ namespace Anti36Manager {
 
     // Filters
     std::deque<char> byTagsFilter;
-    std::unordered_map<Origin*, std::deque<Persona*>> byOriginsFilter; // summary of the byPersonasFilter
+    std::unordered_map<Origin*, std::deque<Persona*>> byOriginsFilter;
     MediaType byTypeFilter = BOTH;
 
     // Other variables
     Persona* currentPersona = nullptr;
-    std::deque<joat::VirtualPath> unsortedPortrayals;
+    std::deque<joat::VirtualPath> unsortedPortrayalsPaths;
+    struct aboutToBeSortedPortrayal {
+      joat::VirtualPath* currentPath;
+      std::deque<char> assignedTags;
+    };
+    std::deque<aboutToBeSortedPortrayal> aboutToBeSortedPortrayalsQueue; // Enables skipping/undoing/redoing specific unsorted portrayals
     std::deque<Portrayal*> collection;
 
 
@@ -853,70 +853,12 @@ namespace Anti36Manager {
         console << "none";
       }
       console << SUBLINE << "Unsorted portrayals: ";
-      for (const joat::VirtualPath& unsortedPortrayal : unsortedPortrayals) {
-        console << SUBSUBLINE << unsortedPortrayal;
+      for (const joat::VirtualPath& unsortedPortrayal : unsortedPortrayalsPaths) {
+        console << SUBSUBLINE << joat::shorten_str_if_necessary_reverse(unsortedPortrayal.path);
       }
       console << '\n';
     }
 
-
-
-    void set_collection_based_on_filters() {
-      /*
-        In this function, the collection deque will be filled with the portrayals
-        that fit the filters set by the user. The filters are stored in the
-        byOriginsFilter, byTagsFilter, and byTypeFilter deques. The filters are
-        exclusive, meaning that the portrayals have to fit all the filters to be
-        added to the collection deque.
-
-        In case a byFilterXY is empty:
-          - If byOriginsFilter are empty, all Origins and their personas are selected
-          - If byTagsFilter is empty, tags are ignored
-          - If byTypeFilter is both, all media is selected
-            - If byTypeFilter is none, an exception is thrown
-      */
-
-      collection.clear();
-
-
-      // Quick check
-      if (byTypeFilter == NONE) {
-        throw std::runtime_error("The type filter is set to NONE. No media can be selected.");
-      }
-      if (byOriginsFilter.empty()) {
-        byOriginsFilter = personasByOrigin;
-      }
-
-
-      for (const auto& [origin, personas] : byOriginsFilter) {
-        for (Persona* persona : personas) {
-          for (Portrayal* portrayal : portrayalsByPersona[persona]) {
-
-            bool fitsFilters = true;
-
-            if (!byTagsFilter.empty()) {
-              // If the portrayal doesn't have a tag from the byTagsFilter deque, it doesn't fit the filters
-              for (char tag : byTagsFilter) {
-                if (!joat::does_this_exist_in_deque(portrayal->tags, tag)) {
-                  fitsFilters = false;
-                  break;
-                }
-              }
-            }
-
-            if (byTypeFilter != BOTH) {
-              if (EXTENSION_TO_MEDIA.at(portrayal->where->extension()) != byTypeFilter) {
-                fitsFilters = false;
-              }
-            }
-
-            if (fitsFilters) {
-              collection.push_back(portrayal);
-            }
-          }
-        }
-      }
-    }
 
 
     // Setup methods
@@ -953,6 +895,9 @@ namespace Anti36Manager {
       /*
         This function goes through every file in the $unsorted folder
         to add them to the unsortedPortrayals deque.
+
+        Additionally, it sorts the unsortedPortrayals deque by last interaction.
+        in ascending order. (The oldest file is the first one)
       */
 
       console << "Reading unsorted files in " << UNSORTED_FOLDER_PATH;
@@ -961,20 +906,28 @@ namespace Anti36Manager {
 
         joat::VirtualPath entry(fileEntry.path().string());
 
-        console << SUBLINE << entry << " is ";
+        console << SUBLINE << joat::shorten_str_if_necessary(entry.path) << " is ";
 
         if (entry.type == joat::VirtualPath::FILE) {
           console << "a file";
-          unsortedPortrayals.push_back(entry);
+          unsortedPortrayalsPaths.push_back(entry);
         }
         else {
           console << "a folder";
         }
-
-        console << " @ " << entry.lastInteraction;
       }
 
-      console << SUBLINE << "Found " << unsortedPortrayals.size() << " unsorted portrayals.";
+      // Sort the unsorted portrayals by last interaction
+      std::sort(unsortedPortrayalsPaths.begin(), unsortedPortrayalsPaths.end(),
+
+        // If a is older (smaller) than b, a comes first
+        [](const joat::VirtualPath& a, const joat::VirtualPath& b) {
+          return a.lastInteraction < b.lastInteraction;
+        }
+
+      );
+
+      console << SUBLINE << "Found " << unsortedPortrayalsPaths.size() << " unsorted portrayals.";
     }
 
 
@@ -1259,7 +1212,7 @@ namespace Anti36Manager {
 
             index_t nextAvailableIndex = 1;
             while (joat::does_this_exist_in_deque(alreadyOccuredIndex, nextAvailableIndex)) {
-              nextAvailableIndex++;
+              ++nextAvailableIndex;
             }
 
             console << SUBSUBLINE << "Changing index of " << portrayal->where->filename() << " from " << portrayal->index << " to " << nextAvailableIndex;
@@ -1336,7 +1289,7 @@ namespace Anti36Manager {
           }
 
           // Continue
-          nextExpectedIndex++;
+          ++nextExpectedIndex;
         }
 
 
@@ -1355,7 +1308,7 @@ namespace Anti36Manager {
           }
 
           // Continue
-          nextExceptedIndex++;
+          ++nextExceptedIndex;
         }
       }
     }
@@ -1381,7 +1334,7 @@ namespace Anti36Manager {
 
 
     // Sorting methods
-    void set_currentPersona() {
+    void user_choose_currentPersona() {
       /*
         This function will ask the user to pick a origin and then a persona
         from that origin. It will then set the currentPersona variable to the
@@ -1410,6 +1363,7 @@ namespace Anti36Manager {
       }
 
 
+
       // Get persona choice
       console << get_persona_chart(originChoiceResult, false) << "\n > "; // Display the personas with the amount of portrayals
 
@@ -1425,6 +1379,552 @@ namespace Anti36Manager {
       }
     }
 
+
+
+    void user_assign_tags_to_unsorted_files() {
+      /*
+        This function will ask the user to assign tags to each file in
+        the unsortedPortrayals deque. Each file can be skipped and returned
+        back to if needed.
+
+        Just to make sure, the unsortedPortrayals deque is sorted by last
+        interaction in ascending order. Meaning the first file added is
+        the first file to be processed.
+
+        Note: Keep in mind that the order still matters. Make sure
+        the lambda function which checks which file is older aka.
+        smaller is correct AND (!) executed.
+      */
+
+     if (unsortedPortrayalsPaths.empty()) {
+       console << "Add some files into \"" << UNSORTED_FOLDER_PATH << "\" first.";
+       return;
+      }
+
+      console << "You have " << unsortedPortrayalsPaths.size() << " unsorted files to assign single-character tags to.";
+      console << SUBLINE << "The files are sorted by last interaction in ascending order.";
+      console << SUBLINE << "'/skip' or *enter* -> continue to the next file.";
+      console << SUBLINE << "'/undo' -> go back to the previous file.";
+      console << SUBLINE << "'/save' -> save and exit.";
+      console << SUBLINE << "'/exit' or *enter* -> exit without saving.";
+      console << SUBLINE << "'/tags' -> show the tag chart.";
+
+
+      // Question-answer loop
+      unsigned int positionInUnsortedFolder = 0; // The position of the current file in the unsortedPortrayals deque
+      while (positionInUnsortedFolder < unsortedPortrayalsPaths.size()) {
+
+        console << SUBLINE << "Tags for " << joat::shorten_str_if_necessary_reverse(unsortedPortrayalsPaths[positionInUnsortedFolder].path);
+        console << '[' << aboutToBeSortedPortrayalsQueue.size() << '/' << unsortedPortrayalsPaths.size() << "]: ";
+        std::string userInput = joat::question();
+
+        if (userInput.empty() or userInput == "/skip") {
+          console << WSUBSUBLINE << "Skipped " << joat::shorten_str_if_necessary_reverse(unsortedPortrayalsPaths[positionInUnsortedFolder].path);
+          ++positionInUnsortedFolder;
+          continue;
+        }
+
+        if (userInput == "/tags") {
+          console << get_tag_chart(true);
+          continue;
+        }
+
+        if (userInput == "/exit") {
+          console << WSUBSUBLINE << "Reverting back to the previous state. No changes made.";
+          aboutToBeSortedPortrayalsQueue.clear();
+          return;
+        }
+
+        if (userInput == "/save") {
+          console << WSUBSUBLINE << "Applying " << aboutToBeSortedPortrayalsQueue.size() << " changes and exiting. Leave the rest to the program.";
+          return;
+        }
+
+        if (userInput == "/undo") {
+          if (aboutToBeSortedPortrayalsQueue.empty()) {
+            console << WSUBSUBLINE << "Nothing to undo.";
+            continue;
+          }
+          console << WSUBSUBLINE << "Undid last change.";
+          aboutToBeSortedPortrayalsQueue.pop_back();
+          positionInUnsortedFolder--;
+          continue;
+        }
+
+
+        // Pick every valid character
+        std::deque<char> validTags;
+
+        for (char tag : userInput) {
+          if (!tag_exists(tag)) {
+            console << WSUBSUBLINE << "No tag with key '" << tag << "' exists.\n";
+            continue;
+          }
+
+          if (joat::does_this_exist_in_deque(validTags, tag)) {
+            console << WSUBSUBLINE << TAGS_LOOKUP.at(tag) << " (" << tag << ") is already assigned.\n";
+            continue;
+          }
+
+          console << WSUBSUBLINE << "Assigned " << TAGS_LOOKUP.at(tag) << " (" << tag << ")\n";
+          validTags.push_back(tag);
+        }
+
+        if (validTags.empty()) {
+          console << WSUBSUBLINE << "None of these were valid. Let's try again.";
+          continue;
+        }
+
+
+        // Add to the queue
+        aboutToBeSortedPortrayalsQueue.push_back({&unsortedPortrayalsPaths[positionInUnsortedFolder], validTags});
+        ++positionInUnsortedFolder;
+      }
+
+      console << SUBLINE << "Done and dusted. You've reached the end and the program will continue from here.";
+      console << SUBLINE << "Press enter to continue..."; std::cin.get(); // Pause
+    }
+
+
+
+    void place_aboutToBeSortedPortrayalsQueue_into_ecosystem() {
+      /*
+        This function will take the aboutToBeSortedPortrayalsQueue deque
+        and apply the changes to the portrayals deque. The portrayals deque
+        will be updated with the new portrayals and the unsortedPortrayalsPaths
+        deque will be cleared from the files that were sorted.
+      */
+
+      console << "Applying changes " << aboutToBeSortedPortrayalsQueue.size() << " changes to the portrayals deque.";
+
+
+      for (auto& [file, assignedTags] : aboutToBeSortedPortrayalsQueue) {
+
+        console << SUBLINE << joat::shorten_str_if_necessary_reverse(file->path) << " -> ";
+
+
+        index_t newIndex = portrayalsByPersona[&PERSONA_ERROR_TYPE].size() + 1;
+        Persona* persona = currentPersona;
+        std::deque<char> newTags = assignedTags;
+
+
+        std::string newPath = ANTI36_FOLDER;
+        newPath += '\\';
+        newPath += persona->origin->name;
+        newPath += '\\';
+        newPath += persona->name;
+        newPath += '\\';
+        newPath += std::to_string(newIndex);
+        newPath += '_';
+        for (char tag : newTags) {
+          newPath += tag;
+        }
+        newPath += '_';
+        newPath += file->extension();
+
+
+        if (!DEBUGGING) {
+          file->move_to(newPath);
+        } else {
+          file->pretend_to_move_to(newPath);
+        }
+
+
+        // Move file to the new path
+        files.push_back(*file);
+        unsortedPortrayalsPaths.erase(std::remove(unsortedPortrayalsPaths.begin(), unsortedPortrayalsPaths.end(), *file), unsortedPortrayalsPaths.end());
+
+
+        // Integrate into the Anti36 ecosystem
+        portrayals.push_back({newIndex, persona, newTags, &files.back()});
+
+        portrayalsByPersona[persona].push_back(&portrayals.back());
+        portrayalsByOrigin[origin_exists(persona->origin->name)].push_back(&portrayals.back()); // Work around for const
+        for (char tag : portrayals.back().tags) {
+          portrayalsByTag[tag].push_back(&portrayals.back());
+        }
+        portrayalsByType[EXTENSION_TO_MEDIA.at(portrayals.back().where->extension())].push_back(&portrayals.back());
+
+        console << portrayals.back().where->filename();
+      }
+
+      aboutToBeSortedPortrayalsQueue.clear();
+    }
+
+
+
+    // Filter and view methods
+    void set_collection_based_on_filters() {
+      /*
+        In this function, the collection deque will be filled with the portrayals
+        that fit the filters set by the user. The filters are stored in the
+        byOriginsFilter, byTagsFilter, and byTypeFilter deques. The filters are
+        exclusive, meaning that the portrayals have to fit all the filters to be
+        added to the collection deque.
+
+        In case a byXYFilter is empty:
+          - If byOriginsFilter are empty, all Origins and their personas are selected
+          - If byTagsFilter is empty, tags are ignored
+          - If byTypeFilter is both, all media is selected
+      */
+
+      collection.clear();
+
+
+      // Quick check
+      if (byOriginsFilter.empty()) {
+        byOriginsFilter = personasByOrigin;
+      }
+
+
+      for (const auto& [origin, personas] : byOriginsFilter) {
+        for (Persona* persona : personas) {
+          for (Portrayal* portrayal : portrayalsByPersona[persona]) {
+
+            bool fitsFilters = true;
+
+            if (!byTagsFilter.empty()) {
+              // If the portrayal doesn't have a tag from the byTagsFilter deque, it doesn't fit the filters
+              for (char tag : byTagsFilter) {
+                if (!joat::does_this_exist_in_deque(portrayal->tags, tag)) {
+                  fitsFilters = false;
+                  break;
+                }
+              }
+            }
+
+            if (byTypeFilter != BOTH) {
+              if (EXTENSION_TO_MEDIA.at(portrayal->where->extension()) != byTypeFilter) {
+                fitsFilters = false;
+              }
+            }
+
+            if (fitsFilters) {
+              collection.push_back(portrayal);
+            }
+          }
+        }
+      }
+    }
+
+
+
+    void user_choose_filter_tag() {
+
+      console << get_tag_chart(true);
+
+      while (true) {
+
+        console << SUBLINE << "Choose a tag(!) or press enter to exit > ";
+        char choiceAsChar = joat::question()[0];
+
+        if (tag_exists(choiceAsChar)) {
+          if (!joat::does_this_exist_in_deque(byTagsFilter, choiceAsChar)) {
+            console << WSUBLINE << '"' << TAGS_LOOKUP.at(choiceAsChar) << '"';
+            byTagsFilter.push_back(choiceAsChar);
+          } else {
+            console << WSUBLINE << "The tag \"" << TAGS_LOOKUP.at(choiceAsChar) << "\" is already selected.";
+          }
+        }
+
+        else if (choiceAsChar == '\0') {
+          return;
+        }
+
+        else {
+          std::cerr << WSUBSUBLINE << "Invalid tag.";
+        }
+      }
+    }
+    void user_choose_filter_type() {
+
+      console << WSUBLINE << "Choose a type (Both, ";
+      console << "Image w. " << portrayalsByType[IMAGE].size() << ", ";
+      console << "Video w. " << portrayalsByType[VIDEO].size() << ") > ";
+      char choice = joat::question()[0];
+
+
+      switch (choice) {
+        case 'A':
+          byTypeFilter = BOTH;
+          console << WSUBSUBLINE << "Filtering by all types.";
+          return;
+        case 'I':
+          byTypeFilter = IMAGE;
+          console << WSUBSUBLINE << "Filtering by images.";
+          return;
+        case 'V':
+          byTypeFilter = VIDEO;
+          console << WSUBSUBLINE << "Filtering by videos.";
+          return;
+        default:
+          std::cerr << WSUBSUBLINE << "Not invented yet.";
+          return;
+      }
+    }
+    void user_choose_filter_persona(Origin *const selectedOrigin) {
+
+      console << get_persona_chart(selectedOrigin, true);
+      console << "\nPick a persona from \"" << selectedOrigin->name << "\" ('*' to select the origin) > ";
+
+      while (true) {
+
+        std::string userInput = joat::question();
+
+        if (userInput.empty()) {
+          return;
+        }
+
+        if (userInput == "*") {
+          console << WSUBLINE << "Selected origin \"" << selectedOrigin->name << '"';
+          byOriginsFilter[selectedOrigin] = personasByOrigin[selectedOrigin];
+          return;
+        }
+
+        Persona* selectedPersona = persona_exists(userInput, selectedOrigin);
+
+        if (selectedPersona->name != ORIGIN_ERROR_TYPE.name) {
+          if (joat::does_this_exist_in_deque(byOriginsFilter[selectedOrigin], selectedPersona)) {
+            console << WSUBLINE << "The persona \"" << selectedPersona->name << "\" is already selected.";
+            continue;
+          }
+          console << WSUBLINE << "Selected persona \"" << selectedPersona->name << '"';
+          byOriginsFilter[selectedOrigin].push_back(selectedPersona);
+          console << "\nAnother one? > ";
+        }
+
+        else {
+          std::cerr << "Who's that > ";
+        }
+      }
+    }
+
+
+
+    void user_choose_filter_origin() {
+
+      console << get_origin_chart(false, true);
+      console << "\nPick an origin to reveal it's personas > ";
+
+      while (true) {
+
+        std::string userInput = joat::question();
+
+        if (userInput.empty()) {
+          return;
+        }
+
+        Origin* originChoice = origin_exists(userInput);
+
+        if (originChoice == &ORIGIN_ERROR_TYPE) {
+          std::cerr << "What's that? > ";
+          continue;
+        }
+
+        if (byOriginsFilter[originChoice].size() == personasByOrigin[originChoice].size()) {
+          console << "Already selected. > ";
+          continue;
+        }
+
+        // Select persona (or origin)
+        user_choose_filter_persona(originChoice);
+        console << "\nPick an origin to reveal it's personas > ";
+      }
+    }
+
+
+
+    void user_choose_filters() {
+      /*
+        This function will ask the user to select some filters like
+        personas from specific origins (or * for the origin itself),
+        tags, and media type. The filters will be stored in the
+        byOriginsFilter, byTagsFilter, and byTypeFilter deques.
+      */
+
+      console << "Based on your filters, a collection of portrayals will be put together. Have fun!";
+      console << SUBLINE << "How to set filters:";
+      console << SUBSUBLINE << "'persona' -> select a persona from a specific origin. You can also use '*' for all personas from that origin.";
+      console << SUBSUBLINE << "'tag' -> select a tag(s)";
+      console << SUBSUBLINE << "'type' -> select a portrayal type (image or video)";
+
+      console << SUBLINE << "Other commands:";
+      console << SUBSUBLINE << "'/clear' -> reset all filters";
+      console << SUBSUBLINE << "'/exit' -> exit without saving";
+      console << SUBSUBLINE << "'/save' or *enter* -> save and exit";
+      console << SUBSUBLINE << "'/summary' -> show the current filters and how many portrayals fit them\n";
+
+
+      while (true) {
+
+        console << SUBLINE; std::string userInput = joat::question();
+
+
+        if (userInput.empty() or userInput == "/save") {
+          console << WSUBSUBLINE << "Saved (not cleared) and exited";
+          return;
+        }
+
+        else if (userInput == "/exit" or userInput == "/clear") {
+          byOriginsFilter.clear();
+          byTagsFilter.clear();
+          byTypeFilter = BOTH;
+          if (userInput == "/exit") {
+            console << WSUBSUBLINE << "Cleared and exited";
+            return;
+          }
+          console << WSUBSUBLINE << "All cleared";
+        }
+
+
+        else if (userInput == "/summary") {
+          console << WSUBSUBLINE << "Those are the filters you've set:";
+
+          console << SUBSUBLINE << byOriginsFilter.size() << " origins:";
+          for (const auto& [origin, itsPersonas] : byOriginsFilter) {
+            console << CRAZYSUBLINE << origin->name << ':';
+            if (itsPersonas.size() == personasByOrigin[origin].size()) {
+              console << " complete";
+            } else {
+              for (Persona* persona : itsPersonas) {
+                console << TURBOCRAZYSUBLINE << persona->name;
+              }
+            }
+          }
+
+          console << SUBSUBLINE << byTagsFilter.size() << " tags:";
+          for (char tag : byTagsFilter) {
+            console << CRAZYSUBLINE << TAGS_LOOKUP.at(tag) << " (" << tag << ')';
+          }
+
+          console << SUBSUBLINE << "Type: ";
+          switch (byTypeFilter) {
+            case IMAGE: console << "image"; break;
+            case VIDEO: console << "video"; break;
+            case BOTH: console << "both"; break;
+          }
+
+          console << SUBSUBLINE << "So all in all, ";
+          set_collection_based_on_filters();
+          console << collection.size() << " portrayals fit those criteria.\n";
+
+          collection.clear();
+        }
+
+
+        else if (userInput == "persona") {
+          user_choose_filter_origin();
+        }
+
+        else if (userInput == "tag") {
+          user_choose_filter_tag();
+        }
+
+        else if (userInput == "type") {
+          user_choose_filter_type();
+        }
+
+        else {
+          std::cerr << WSUBLINE << "Nuh uh!\n";
+        }
+      }
+    }
+
+
+
+    void generate_HTML_file() {
+      /*
+        This function will generate a HTML file which contains all the portrayals that fits the
+        filters. See namespace Anti36Local as reference for the HTML structure.
+
+        In the header, the mutable structure is as follows:
+          - First are the origins with only their names if the entire origin is selected
+          - Then are the personas with their names and their origin's name behind it as "'d origin"
+          - Then, the tags (not as key) are listed
+          - Finally, the type of the portrayals is listed (image, video, both)
+        
+        It also reverts the filters to their default state.  
+      */
+
+      console << "Generating HTML file";
+
+
+      std::ofstream htmlContent(HTML_OUTPUT_FILE);
+
+      // Header
+      htmlContent << HTML_HEADER[0]; // <h2 style="color: white">Found_
+      htmlContent << std::to_string(collection.size());
+      htmlContent << HTML_HEADER[1]; // _portrayals for [
+
+
+      if (byOriginsFilter.size() == origins.size()) {
+        htmlContent << "everything, ";
+        byOriginsFilter.clear(); // Clear to avoid executing a block below.
+      } 
+
+      while (byOriginsFilter.size() > 0) {
+        const auto& [iteratedOrigin, itsPersonas] = *byOriginsFilter.begin();
+        if (itsPersonas.size() == personasByOrigin[iteratedOrigin].size()) {
+          htmlContent << iteratedOrigin->name;
+          htmlContent << ", ";
+        }
+
+        // Personas
+        else {
+          for (Persona* persona : itsPersonas) {
+            htmlContent << persona->name;
+            htmlContent << " d'";
+            htmlContent << iteratedOrigin->name;
+            htmlContent << ", ";
+          }
+        }
+        byOriginsFilter.erase(byOriginsFilter.begin());
+      }
+
+
+      // Tags
+      while (byTagsFilter.size() > 0) {
+        htmlContent << TAGS_LOOKUP.at(*byTagsFilter.begin());
+        htmlContent << ", ";
+        byTagsFilter.pop_front();
+      }
+
+
+      // Media type
+      switch (byTypeFilter) {
+        case IMAGE: htmlContent << "images"; break;
+        case VIDEO: htmlContent << "videos"; break;
+        case BOTH: htmlContent << "any type"; break;
+      }
+      byTypeFilter = BOTH;
+
+
+      htmlContent << HTML_HEADER[2]; // ]. Enjoy!</h2> <body style="background-color:#330000;">
+
+
+      while (collection.size() > 0) {
+        Portrayal* portrayal = collection.front();
+        switch (EXTENSION_TO_MEDIA.at(portrayal->where->extension())) {
+          case IMAGE: {
+            htmlContent << HTML_IMAGE[0]; // """<img src=""""
+            htmlContent << portrayal->where->path; // the full path to the image
+            htmlContent << HTML_IMAGE[1]; // """" controls width=\"300\">"""
+            break;
+          }
+          case VIDEO: {
+            htmlContent << HTML_VIDEO[0]; // """<video src=""""
+            htmlContent << portrayal->where->path; // the full path to the video
+            htmlContent << HTML_VIDEO[1]; // """" controls width=\"300\">"""
+            break;
+          }
+        }
+        collection.pop_front();
+      }
+
+
+      htmlContent.close();
+      joat::cmd(HTML_OUTPUT_FILE);
+    }
 
 
 
@@ -1458,7 +1958,7 @@ namespace Anti36Manager {
 
           switch (userInput) {
             case WELCOME_SCREEN_SORTING_OPTION: {
-              set_currentPersona();
+              user_choose_currentPersona();
               break;
             }
 
