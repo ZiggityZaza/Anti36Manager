@@ -111,7 +111,7 @@ It's pretty difficult to accidentally crash the program. But if you do, here are
         <ul>
             <li>If you wan't to make a change to the Anti36Local folders, go to the main menu and press enter.
         </ul>
-        <li>Adding another portrayal (using the sorting option) while the selected persona is already at full capacity will add a +1 higher than the amount index_t can hold leading to a crash without an exception.
+        <li>Adding another portrayal (using the sorting option) while the selected persona is already at full capacity, meaning last index is higher than index_t can hold, the number will be set to 0 and counted up from there. This obviously leads to unexpected behavior.
         
 
 </details>
