@@ -249,7 +249,7 @@ namespace joat { // Jack of all trades (Helper functions and classes)
 
       friend std::ostream& operator<<(std::ostream& os, const TimeStamp& thisObject) {
         os << thisObject.day << '.' << thisObject.month << '.' << thisObject.year;
-        os << '-' << thisObject.hour << ':' << thisObject.minute << ':' << thisObject.second;
+        os << " at " << thisObject.hour << ':' << thisObject.minute << ':' << thisObject.second;
         os << " (" << thisObject.weekday << ')';
         return os;
       }
@@ -350,7 +350,7 @@ namespace joat { // Jack of all trades (Helper functions and classes)
       };
 
       std::string path;
-      const Type type;
+      Type type; // Can't const because of std::sort... Sacrifices must be made...
       TimeStamp lastInteraction;
 
       explicit VirtualPath(const std::string &path) : path(path), type(std::filesystem::is_directory(path) ? DICT : FILE), lastInteraction(last_modified(path)) {
@@ -396,6 +396,9 @@ namespace joat { // Jack of all trades (Helper functions and classes)
           throw std::out_of_range("Index out of range");
         }
         return parts[index];
+      }
+      bool operator==(const VirtualPath &other) const {
+        return path == other.path;
       }
 
       static size_t file_size(const std::string &filePath) {
@@ -896,7 +899,7 @@ namespace Anti36Manager {
         This function goes through every file in the $unsorted folder
         to add them to the unsortedPortrayals deque.
 
-        Additionally, it sorts the unsortedPortrayals deque by last interaction.
+        Additionally, it rearranges the unsortedPortrayals deque by last interaction.
         in ascending order. (The oldest file is the first one)
       */
 
@@ -906,28 +909,23 @@ namespace Anti36Manager {
 
         joat::VirtualPath entry(fileEntry.path().string());
 
-        console << SUBLINE << joat::shorten_str_if_necessary(entry.path) << " is ";
+        console << SUBLINE << joat::shorten_str_if_necessary_reverse(entry.filename()) << " @ " << entry.lastInteraction;
 
         if (entry.type == joat::VirtualPath::FILE) {
-          console << "a file";
           unsortedPortrayalsPaths.push_back(entry);
-        }
-        else {
-          console << "a folder";
         }
       }
 
-      // Sort the unsorted portrayals by last interaction
-      std::sort(unsortedPortrayalsPaths.begin(), unsortedPortrayalsPaths.end(),
 
+      // rearrange the files by last interaction
+      std::sort(unsortedPortrayalsPaths.begin(), unsortedPortrayalsPaths.end(),
         // If a is older (smaller) than b, a comes first
         [](const joat::VirtualPath& a, const joat::VirtualPath& b) {
           return a.lastInteraction < b.lastInteraction;
         }
-
       );
 
-      console << SUBLINE << "Found " << unsortedPortrayalsPaths.size() << " unsorted portrayals.";
+      console << SUBLINE << "Found and rearranged " << unsortedPortrayalsPaths.size() << " files.";
     }
 
 
