@@ -55,6 +55,14 @@ static constexpr const char* ASCII_ART = R"(
 #include <deque> // Containers with continuous memory addresses
 #include <map> // Specifically for TAGS lookup
 
+#if __cplusplus < 202002L
+  #error This program requires C++20
+#endif
+
+#ifndef _WIN32
+  #error This program is only for Windows
+#endif
+
 
 
 namespace joat { // Jack of all trades (Helper functions and classes)
@@ -81,20 +89,21 @@ namespace joat { // Jack of all trades (Helper functions and classes)
       */
 
       // Placeholder
+      system(command.c_str());
       return false;
     }
 
 
     static constexpr uint8_t MAX_GENERAL_STRING_LENGTH = 50;
-    static std::string shorten_str_if_necessary(const std::string &str) {
-        if (str.length() > MAX_GENERAL_STRING_LENGTH) {
-          return str.substr(0, MAX_GENERAL_STRING_LENGTH - 3) + "...";
+    static std::string shorten_str_if_necessary(const std::string &str, uint8_t maxLength = MAX_GENERAL_STRING_LENGTH) {
+        if (str.length() > maxLength) {
+          return str.substr(0, maxLength - 3) + "...";
         }
         return str;
     }
-    static std::string shorten_str_if_necessary_reverse(const std::string &str) {
-        if (str.length() > MAX_GENERAL_STRING_LENGTH) {
-          return "..." + str.substr(str.length() - MAX_GENERAL_STRING_LENGTH + 3); // +3 for the "..."
+    static std::string shorten_str_if_necessary_reverse(const std::string &str, uint8_t maxLength = MAX_GENERAL_STRING_LENGTH) {
+        if (str.length() > maxLength) {
+          return "..." + str.substr(str.length() - maxLength + 3); // +3 for the "..."
         }
         return str;
     }
@@ -373,6 +382,9 @@ namespace joat { // Jack of all trades (Helper functions and classes)
         return std::filesystem::path(path); // C:\Users\txts\exmpl.txt
       }
       const unsigned short depth() const { // 3
+        if (this->path.back() == '\\') {
+          return std::count(path.begin(), path.end(), '\\') - 1;
+        }
         return std::count(path.begin(), path.end(), '\\');
       }
 
@@ -905,11 +917,11 @@ namespace Anti36Manager {
 
       console << "Reading unsorted files in " << UNSORTED_FOLDER_PATH;
 
-      for (const std::filesystem::directory_entry& fileEntry : std::filesystem::directory_iterator(UNSORTED_FOLDER_PATH)) {
+      for (const std::filesystem::directory_entry& fileEntry : std::filesystem::recursive_directory_iterator(UNSORTED_FOLDER_PATH)) {
 
         joat::VirtualPath entry(fileEntry.path().string());
 
-        console << SUBLINE << joat::shorten_str_if_necessary_reverse(entry.filename()) << " @ " << entry.lastInteraction;
+        console << SUBLINE << joat::shorten_str_if_necessary_reverse(entry.path) << " @ " << entry.lastInteraction;
 
         if (entry.type == joat::VirtualPath::FILE) {
           unsortedPortrayalsPaths.push_back(entry);
@@ -1332,7 +1344,26 @@ namespace Anti36Manager {
 
 
     // Sorting methods
-    void user_choose_currentPersona() {
+    void user_choose_currentPersona(Origin *const desecendingOrigin) {
+      /*
+        This function will ask the user to pick a persona from the current origin.
+        It will then set the currentPersona variable to the chosen persona.
+      */
+
+      console << get_persona_chart(desecendingOrigin, false) << "\n Choose a persona > "; // Display the personas with the amount of portrayals
+
+      while (true) {
+        std::string userInput = joat::question();
+        currentPersona = persona_exists(userInput, desecendingOrigin); // borrowing global variable for definition without copying
+        if (userInput.empty()) {
+          return;
+        } else if (currentPersona != &PERSONA_ERROR_TYPE) {
+          break;
+        }
+        std::cerr<< "?> ";
+      }
+    }
+    void user_choose_currentOrigin() {
       /*
         This function will ask the user to pick a origin and then a persona
         from that origin. It will then set the currentPersona variable to the
@@ -1347,31 +1378,21 @@ namespace Anti36Manager {
 
 
       // Get origin choice
-      console << get_origin_chart(false, true) << "\n > ";
+      console << get_origin_chart(false, true) << "\n Choose an origin > ";
 
       while (true) {
         userInput = joat::question();
         originChoiceResult = origin_exists(userInput);
         if (originChoiceResult != &ORIGIN_ERROR_TYPE) {
-          break;
+          user_choose_currentPersona(originChoiceResult);
+
+          if (currentPersona != &PERSONA_ERROR_TYPE) {
+            return;
+          }
+
+          console << get_origin_chart(false, true) << "\n Choose an origin > ";
         } else if (userInput.empty()) {
           return;
-        }
-        std::cerr<< "?> ";
-      }
-
-
-
-      // Get persona choice
-      console << get_persona_chart(originChoiceResult, false) << "\n > "; // Display the personas with the amount of portrayals
-
-      while (true) {
-        userInput = joat::question();
-        currentPersona = persona_exists(userInput, originChoiceResult); // borrowing global variable for definition without copying
-        if (userInput.empty()) {
-          return;
-        } else if (currentPersona != &PERSONA_ERROR_TYPE) {
-          break;
         }
         std::cerr<< "?> ";
       }
@@ -1399,25 +1420,39 @@ namespace Anti36Manager {
        return;
       }
 
-      console << "You have " << unsortedPortrayalsPaths.size() << " unsorted files to assign single-character tags to.";
-      console << SUBLINE << "The files are sorted by last interaction in ascending order.";
-      console << SUBLINE << "'/skip' or *enter* -> continue to the next file.";
-      console << SUBLINE << "'/undo' -> go back to the previous file.";
-      console << SUBLINE << "'/save' -> save and exit.";
-      console << SUBLINE << "'/exit' or *enter* -> exit without saving.";
-      console << SUBLINE << "'/tags' -> show the tag chart.";
+      console << "You have " << unsortedPortrayalsPaths.size() << " unsorted files to assign single-character tags";
+      console << SUBLINE << "The files are sorted by last interaction in ascending order (oldest first)";
+      console << SUBLINE << "'/skip' or *enter* -> continue to the next file";
+      console << SUBLINE << "'/undo' -> go back to the previous file";
+      console << SUBLINE << "'/save' -> save and exit";
+      console << SUBLINE << "'/exit' or *enter* -> exit without saving";
+      console << SUBLINE << "'/tags' -> show the tag chart";
+      console << SUBLINE << "[Position in filesystem / Amount of changes / Total amount of files]\n";
 
 
       // Question-answer loop
       unsigned int positionInUnsortedFolder = 0; // The position of the current file in the unsortedPortrayals deque
       while (positionInUnsortedFolder < unsortedPortrayalsPaths.size()) {
 
-        console << SUBLINE << "Tags for " << joat::shorten_str_if_necessary_reverse(unsortedPortrayalsPaths[positionInUnsortedFolder].path);
-        console << '[' << aboutToBeSortedPortrayalsQueue.size() << '/' << unsortedPortrayalsPaths.size() << "]: ";
+
+        // Shortened path to allow subfolder to be shown
+        unsigned short depthOfUnsortedFile = unsortedPortrayalsPaths[positionInUnsortedFolder].depth();
+        unsigned short depthOfUnsortedFolder = joat::VirtualPath(UNSORTED_FOLDER_PATH).depth();
+        std::string pathShortend;
+        for (unsigned short i = depthOfUnsortedFolder; i < depthOfUnsortedFile; ++i) {
+          pathShortend += unsortedPortrayalsPaths[positionInUnsortedFolder][i];
+          if (i != depthOfUnsortedFile - 1) {
+            pathShortend += '\\';
+          }
+        }
+        
+
+        console << SUBLINE << "Tags for " << pathShortend;
+        console << '[' << positionInUnsortedFolder + 1 << '/' << aboutToBeSortedPortrayalsQueue.size() << '/' << unsortedPortrayalsPaths.size() << "]: ";
         std::string userInput = joat::question();
 
         if (userInput.empty() or userInput == "/skip") {
-          console << WSUBSUBLINE << "Skipped " << joat::shorten_str_if_necessary_reverse(unsortedPortrayalsPaths[positionInUnsortedFolder].path);
+          console << WSUBSUBLINE << "Skipped " << joat::shorten_str_if_necessary_reverse(unsortedPortrayalsPaths[positionInUnsortedFolder].path) << '\n';
           ++positionInUnsortedFolder;
           continue;
         }
@@ -1428,7 +1463,7 @@ namespace Anti36Manager {
         }
 
         if (userInput == "/exit") {
-          console << WSUBSUBLINE << "Reverting back to the previous state. No changes made.";
+          console << WSUBSUBLINE << "Reverting back to the previous state.";
           aboutToBeSortedPortrayalsQueue.clear();
           return;
         }
@@ -1438,11 +1473,34 @@ namespace Anti36Manager {
           return;
         }
 
+
         if (userInput == "/undo") {
-          if (aboutToBeSortedPortrayalsQueue.empty()) {
+
+          // Nothing to undo at all
+          if (positionInUnsortedFolder == 0 and aboutToBeSortedPortrayalsQueue.empty()) {
             console << WSUBSUBLINE << "Nothing to undo.";
             continue;
+          } else if (positionInUnsortedFolder == 0 and !aboutToBeSortedPortrayalsQueue.empty()) {
+            console << WSUBSUBLINE << "Reverted back to the previous state. No changes made.";
+            aboutToBeSortedPortrayalsQueue.clear();
+            continue;
           }
+
+          // Undo skipping
+          // If there has been a change to a file at all
+          if (!aboutToBeSortedPortrayalsQueue.empty()) {
+            // If the last change wasn't assigning tags to an unsorted portrayal
+            if (aboutToBeSortedPortrayalsQueue.back().currentPath != &unsortedPortrayalsPaths[positionInUnsortedFolder]) { // Seg fault when trying to access the last element of an empty deque
+              console << WSUBSUBLINE << "Reverted back to the previous file.";
+              positionInUnsortedFolder--;
+              continue;
+            }
+          } else if (aboutToBeSortedPortrayalsQueue.empty() and positionInUnsortedFolder > 0) {
+            console << WSUBSUBLINE << "Reverted back to the previous file.";
+            positionInUnsortedFolder--;
+            continue;
+          }
+
           console << WSUBSUBLINE << "Undid last change.";
           aboutToBeSortedPortrayalsQueue.pop_back();
           positionInUnsortedFolder--;
@@ -1450,7 +1508,6 @@ namespace Anti36Manager {
         }
 
 
-        // Pick every valid character
         std::deque<char> validTags;
 
         for (char tag : userInput) {
@@ -1479,8 +1536,13 @@ namespace Anti36Manager {
         ++positionInUnsortedFolder;
       }
 
-      console << SUBLINE << "Done and dusted. You've reached the end and the program will continue from here.";
-      console << SUBLINE << "Press enter to continue..."; std::cin.get(); // Pause
+      if (!aboutToBeSortedPortrayalsQueue.empty()) {
+        console << SUBLINE << "Done and dusted. You've reached the end and the program will continue from here.";
+      } else {
+        console << SUBLINE << "No tags were assigned. No changes made.";
+      }
+      
+      console << SUBLINE << "Press enter to go back to main-menu..."; std::cin.get(); // Pause
     }
 
 
@@ -1501,7 +1563,7 @@ namespace Anti36Manager {
         console << SUBLINE << joat::shorten_str_if_necessary_reverse(file->path) << " -> ";
 
 
-        index_t newIndex = portrayalsByPersona[&PERSONA_ERROR_TYPE].size() + 1;
+        index_t newIndex = portrayalsByPersona[currentPersona].size() + 1;
         Persona* persona = currentPersona;
         std::deque<char> newTags = assignedTags;
 
@@ -1952,12 +2014,16 @@ namespace Anti36Manager {
 
         // The user interface
         while (true) {
-          char userInput = welcome();
+          char userInput = welcome(); // New-line is included in the function
 
           switch (userInput) {
             case WELCOME_SCREEN_SORTING_OPTION: {
-              user_choose_currentPersona();
-              break;
+              user_choose_currentOrigin(); // Exits with a new line due to user-interaction, entry-point for selecting a persona
+              if (currentPersona != nullptr and currentPersona != &PERSONA_ERROR_TYPE) {
+                user_assign_tags_to_unsorted_files();
+                console << NEXT;
+                place_aboutToBeSortedPortrayalsQueue_into_ecosystem();
+              }
             }
 
             case WELCOME_SCREEN_VIEWING_OPTION: {
@@ -1970,13 +2036,12 @@ namespace Anti36Manager {
             }
 
             default: {
-              console << "Invalid input. Please try again.";
-              continue;
+              return;
             }
           }
 
           // Pause
-          std::cout << "Press enter to continue...";
+          std::cout << "Press enter to go refresh...";
           std::cin.get();
         }
       }

@@ -109,7 +109,7 @@ It's pretty difficult to accidentally crash the program. But if you do, here are
         <li>Using non-ascii characters in any part of the program or Anti36Local folders. std::filesystem::path string supports characters larger than ascii but the joat::VirtualPath object (to which the fs::path is converted to) doesn't.
         <li>Deleting files/folders while the program is running. The program doesn't check if the file/folder exists before trying to access it.
         <ul>
-            <li>If you wan't to make a change to the Anti36Local folders, go to the main menu and press enter.
+            <li>If you want to make a change to the Anti36Local folders, go to the main menu and press enter.
         </ul>
         <li>Adding another portrayal (using the sorting option) while the selected persona is already at full capacity, meaning last index is higher than index_t can hold, the number will be set to 0 and counted up from there. This obviously leads to unexpected behavior.
         
