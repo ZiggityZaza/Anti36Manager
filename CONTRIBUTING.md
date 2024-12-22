@@ -20,6 +20,15 @@ Don't go crazy with the non-stl libraries. I have ~int(~int(0)) idea how to use 
 #
 ### Namespace Anti36Manager specific 🦧🦨
 <details>
+<summary><i>Newlines and sublining inside console UI</i></summary>
+"_" means space
+<ul>
+    <li>"\n_>>_" NEXT - Entry-point for a new section such as a new topic
+    <li>"_>>_" HEAD - Process of a section such as a new persona
+    <li>And so on...
+</details>
+
+<details>
 <summary><i>How the program handles files</i></summary>
 </details>
 

@@ -564,16 +564,16 @@ namespace Anti36Manager {
     {'x', "_x"},
     {'y', "_y"},
     {'z', "_z"},
-    {'0', "zero"},
-    {'1', "one"},
-    {'2', "two"},
-    {'3', "three"},
-    {'4', "four"},
-    {'5', "five"},
-    {'6', "six"},
-    {'7', "seven"},
-    {'8', "eight"},
-    {'9', "nine"}
+    {'0', "_0"},
+    {'1', "_1"},
+    {'2', "_2"},
+    {'3', "_3"},
+    {'4', "_4"},
+    {'5', "_5"},
+    {'6', "_6"},
+    {'7', "_7"},
+    {'8', "_8"},
+    {'9', "_9"}
   };
 
 
@@ -1438,21 +1438,27 @@ namespace Anti36Manager {
         // Shortened path to allow subfolder to be shown
         unsigned short depthOfUnsortedFile = unsortedPortrayalsPaths[positionInUnsortedFolder].depth();
         unsigned short depthOfUnsortedFolder = joat::VirtualPath(UNSORTED_FOLDER_PATH).depth();
+        uint8_t recommendedSubfolderStringLenght = 5;
+
         std::string pathShortend;
         for (unsigned short i = depthOfUnsortedFolder; i < depthOfUnsortedFile; ++i) {
           pathShortend += unsortedPortrayalsPaths[positionInUnsortedFolder][i];
-          if (i != depthOfUnsortedFile - 1) {
-            pathShortend += '\\';
-          }
-        }
-        
 
-        console << SUBLINE << "Tags for " << pathShortend;
+          // Remove last dot to make output look better and add a backslash to indicate a subfolder
+          if (pathShortend.back() == '.') {
+            pathShortend.pop_back();
+          }
+          pathShortend += '\\';
+        }
+        pathShortend += unsortedPortrayalsPaths[positionInUnsortedFolder].filename();
+
+
+        console << SUBLINE << pathShortend;
         console << '[' << positionInUnsortedFolder + 1 << '/' << aboutToBeSortedPortrayalsQueue.size() << '/' << unsortedPortrayalsPaths.size() << "]: ";
         std::string userInput = joat::question();
 
         if (userInput.empty() or userInput == "/skip") {
-          console << WSUBSUBLINE << "Skipped " << joat::shorten_str_if_necessary_reverse(unsortedPortrayalsPaths[positionInUnsortedFolder].path) << '\n';
+          console << WSUBSUBLINE << "Skipped " << pathShortend << '\n';
           ++positionInUnsortedFolder;
           continue;
         }
@@ -1555,12 +1561,12 @@ namespace Anti36Manager {
         deque will be cleared from the files that were sorted.
       */
 
-      console << "Applying changes " << aboutToBeSortedPortrayalsQueue.size() << " changes to the portrayals deque.";
+      console << "Placing " << aboutToBeSortedPortrayalsQueue.size() << " files into the Anti36 ecosystem";
 
 
       for (auto& [file, assignedTags] : aboutToBeSortedPortrayalsQueue) {
 
-        console << SUBLINE << joat::shorten_str_if_necessary_reverse(file->path) << " -> ";
+        console << SUBLINE << file->path << " -> ";
 
 
         index_t newIndex = portrayalsByPersona[currentPersona].size() + 1;
@@ -1631,9 +1637,32 @@ namespace Anti36Manager {
       collection.clear();
 
 
-      // Quick check
+      // In case the byOriginsFilter is empty, only tags and media type are considered
       if (byOriginsFilter.empty()) {
-        byOriginsFilter = personasByOrigin;
+        for (Portrayal& portrayal : portrayals) {
+
+          bool fitsFilters = true;
+
+          if (!byTagsFilter.empty()) {
+            // If the portrayal doesn't have a tag from the byTagsFilter deque, it doesn't fit the filters
+            for (char tag : byTagsFilter) {
+              if (!joat::does_this_exist_in_deque(portrayal.tags, tag)) {
+                fitsFilters = false;
+                break;
+              }
+            }
+          }
+
+          if (byTypeFilter != BOTH) {
+            if (EXTENSION_TO_MEDIA.at(portrayal.where->extension()) != byTypeFilter) {
+              fitsFilters = false;
+            }
+          }
+
+          if (fitsFilters) {
+            collection.push_back(&portrayal);
+          }
+        }
       }
 
 
@@ -1680,7 +1709,7 @@ namespace Anti36Manager {
 
         if (tag_exists(choiceAsChar)) {
           if (!joat::does_this_exist_in_deque(byTagsFilter, choiceAsChar)) {
-            console << WSUBLINE << '"' << TAGS_LOOKUP.at(choiceAsChar) << '"';
+            console << WSUBLINE << "Added \"" << TAGS_LOOKUP.at(choiceAsChar) << '"';
             byTagsFilter.push_back(choiceAsChar);
           } else {
             console << WSUBLINE << "The tag \"" << TAGS_LOOKUP.at(choiceAsChar) << "\" is already selected.";
@@ -1777,7 +1806,12 @@ namespace Anti36Manager {
         Origin* originChoice = origin_exists(userInput);
 
         if (originChoice == &ORIGIN_ERROR_TYPE) {
-          std::cerr << "What's that? > ";
+          std::cerr << "?> ";
+          continue;
+        }
+
+        if (personasByOrigin[originChoice].empty()) {
+          console << "This origin has no personas > ";
           continue;
         }
 
@@ -1809,10 +1843,10 @@ namespace Anti36Manager {
       console << SUBSUBLINE << "'type' -> select a portrayal type (image or video)";
 
       console << SUBLINE << "Other commands:";
-      console << SUBSUBLINE << "'/clear' -> reset all filters";
-      console << SUBSUBLINE << "'/exit' -> exit without saving";
-      console << SUBSUBLINE << "'/save' or *enter* -> save and exit";
-      console << SUBSUBLINE << "'/summary' -> show the current filters and how many portrayals fit them\n";
+      console << SUBSUBLINE << "'clear' -> reset all filters";
+      console << SUBSUBLINE << "'exit' or *enter* -> exit without saving";
+      console << SUBSUBLINE << "'save' -> save and exit";
+      console << SUBSUBLINE << "'reveal' -> show the current filters and how many portrayals fit them";
 
 
       while (true) {
@@ -1820,16 +1854,16 @@ namespace Anti36Manager {
         console << SUBLINE; std::string userInput = joat::question();
 
 
-        if (userInput.empty() or userInput == "/save") {
+        if (userInput == "save") {
           console << WSUBSUBLINE << "Saved (not cleared) and exited";
           return;
         }
 
-        else if (userInput == "/exit" or userInput == "/clear") {
+        else if (userInput == "exit" or userInput == "clear" or userInput.empty()) {
           byOriginsFilter.clear();
           byTagsFilter.clear();
           byTypeFilter = BOTH;
-          if (userInput == "/exit") {
+          if (userInput == "exit" or userInput.empty()) {
             console << WSUBSUBLINE << "Cleared and exited";
             return;
           }
@@ -1837,7 +1871,7 @@ namespace Anti36Manager {
         }
 
 
-        else if (userInput == "/summary") {
+        else if (userInput == "reveal") {
           console << WSUBSUBLINE << "Those are the filters you've set:";
 
           console << SUBSUBLINE << byOriginsFilter.size() << " origins:";
@@ -1864,9 +1898,11 @@ namespace Anti36Manager {
             case BOTH: console << "both"; break;
           }
 
-          console << SUBSUBLINE << "So all in all, ";
-          set_collection_based_on_filters();
-          console << collection.size() << " portrayals fit those criteria.\n";
+          if (!byOriginsFilter.empty() and !byTagsFilter.empty()) { // Avoiding a full collection if no filters are set
+            console << SUBSUBLINE << "So all in all, ";
+            set_collection_based_on_filters();
+            console << collection.size() << " portrayals fit those criteria.";
+          }
 
           collection.clear();
         }
@@ -1885,7 +1921,7 @@ namespace Anti36Manager {
         }
 
         else {
-          std::cerr << WSUBLINE << "Nuh uh!\n";
+          std::cerr << WSUBLINE << "Nuh uh!";
         }
       }
     }
@@ -2024,11 +2060,23 @@ namespace Anti36Manager {
                 console << NEXT;
                 place_aboutToBeSortedPortrayalsQueue_into_ecosystem();
               }
+              break;
             }
 
             case WELCOME_SCREEN_VIEWING_OPTION: {
+              console << WHEAD;
+              user_choose_filters();
+              // Quick check
+              if (byOriginsFilter.empty() and !byTagsFilter.empty()) {
+                byOriginsFilter = personasByOrigin;
+                console << NEXT << "Putting together collection.";
+                set_collection_based_on_filters();
+                console << NEXT;
+                generate_HTML_file();
+              }
               break;
             }
+
 
             case WELCOME_SCREEN_SUMMARY_OPTION: {
               summarize();
@@ -2040,9 +2088,6 @@ namespace Anti36Manager {
             }
           }
 
-          // Pause
-          std::cout << "Press enter to go refresh...";
-          std::cin.get();
         }
       }
   };
