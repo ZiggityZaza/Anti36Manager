@@ -256,9 +256,19 @@ namespace joat { // Jack of all trades (Helper functions and classes)
         second = timeinfo->tm_sec;
       }
 
+      // friend std::ostream& operator<<(std::ostream& os, const TimeStamp& thisObject) {
+      //   os << thisObject.day << '.' << thisObject.month << '.' << thisObject.year;
+      //   os << " at " << thisObject.hour << ':' << thisObject.minute << ':' << thisObject.second;
+      //   os << " (" << thisObject.weekday << ')';
+      //   return os;
+      // }
       friend std::ostream& operator<<(std::ostream& os, const TimeStamp& thisObject) {
         os << thisObject.day << '.' << thisObject.month << '.' << thisObject.year;
-        os << " at " << thisObject.hour << ':' << thisObject.minute << ':' << thisObject.second;
+        os << " at ";
+        if (thisObject.hour < 10) {os << '0';}
+        os << thisObject.hour << ':';
+        if (thisObject.minute < 10) {os << '0';}
+        os << thisObject.minute;
         os << " (" << thisObject.weekday << ')';
         return os;
       }
@@ -869,7 +879,8 @@ namespace Anti36Manager {
       }
       console << SUBLINE << "Unsorted portrayals: ";
       for (const joat::VirtualPath& unsortedPortrayal : unsortedPortrayalsPaths) {
-        console << SUBSUBLINE << joat::shorten_str_if_necessary_reverse(unsortedPortrayal.path);
+        console << SUBSUBLINE << joat::shorten_str_if_necessary_reverse(unsortedPortrayal.path,75);
+        console << " @ " << unsortedPortrayal.lastInteraction;
       }
       console << '\n';
     }
@@ -1390,7 +1401,8 @@ namespace Anti36Manager {
             return;
           }
 
-          console << get_origin_chart(false, true) << "\n Choose an origin > ";
+          console << get_origin_chart(false, true) << "\n Back to selecting an origin > ";
+          continue;
         } else if (userInput.empty()) {
           return;
         }
