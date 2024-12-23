@@ -20,6 +20,15 @@ Don't go crazy with the non-stl libraries. I have ~int(~int(0)) idea how to use 
 #
 ### Namespace Anti36Manager specific 🦧🦨
 <details>
+<summary><i>Newlines and sublining inside console UI</i></summary>
+"_" means space
+<ul>
+    <li>"\n_>>_" NEXT - Entry-point for a new section such as a new topic
+    <li>"_>>_" HEAD - Process of a section such as a new persona
+    <li>And so on...
+</details>
+
+<details>
 <summary><i>How the program handles files</i></summary>
 </details>
 
@@ -131,7 +140,8 @@ Stay away from any kind of dynamic allocation. Not even smart pointers. Trust th
     <li>"or" instead of "||"
     <li>"and" instead of "&&"
     <li>A tradition in this project is to change the ASCII art after each major update (1.4 -> 1.5)
-
+    <li>I discourage three way operators
+    <li>I also discourage lambda functions except the ones in c++23
 </ul>
 </details>
 
