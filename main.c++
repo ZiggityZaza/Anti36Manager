@@ -610,6 +610,15 @@ namespace Anti36Manager {
     std::unordered_map<Persona*, std::deque<Portrayal*>> portrayalsByPersona;
     std::unordered_map<char, std::deque<Portrayal*>> portrayalsByTag;
     std::unordered_map<MediaType, std::deque<Portrayal*>> portrayalsByType;
+    /*
+      Important note: The order of portrayals in easy-access containers typically
+      follows the first-to-last index, as std::filesystem::recursive_directory_iterator
+      traverses directories surface-first alphabetically. However, some methods may
+      disrupt this order by swapping indexes.
+
+      Refreshing the program resolves this by reloading and re-adding content.
+    */
+
 
     // Filters
     std::deque<char> byTagsFilter;
@@ -620,6 +629,8 @@ namespace Anti36Manager {
     Persona* currentPersona = nullptr;
     std::deque<joat::VirtualPath> unsortedPortrayalsPaths;
     struct aboutToBeSortedPortrayal {
+      index_t specialTreatmentIndex = 0; // Auto increment
+      Portrayal* replacementFor = nullptr; // Not meant to replace anything
       joat::VirtualPath* currentPath;
       std::deque<char> assignedTags;
     };
@@ -831,6 +842,37 @@ namespace Anti36Manager {
 
 
 
+    void squeeze_portrayal_into(Portrayal *const portrayalInQuestion, Portrayal *const followingPortrayal) {
+      /*
+        This function takes portrayalInQuestion and puts it in front of followingPortrayal
+        by changing the index of portrayalInQuestion to the index of followingPortrayal and
+        incrementing the index of every following portrayal of the same persona by one.
+      */
+
+
+      if (portrayalInQuestion->persona != followingPortrayal->persona) {
+        throw std::invalid_argument("The two portrayals are not of the same persona");
+        return;
+      }
+      if (portrayalInQuestion->index != followingPortrayal->index + 1) {
+        throw std::invalid_argument("The two portrayals are not next to each other");
+        return;
+      }
+
+
+      change_portrayal_index(portrayalInQuestion, followingPortrayal->index);
+
+
+      // Increment the index of every following portrayal of the same persona by one
+      for (Portrayal* iteratingPortrayal : portrayalsByPersona[persona_exists(portrayalInQuestion->persona->name, portrayalInQuestion->persona->origin)]) { // Work-around for const
+        if (portrayalInQuestion->index <= iteratingPortrayal->index and iteratingPortrayal != portrayalInQuestion) {
+          change_portrayal_index(iteratingPortrayal, iteratingPortrayal->index + 1);
+        }
+      }
+    }
+
+
+
     void summarize() {
       /*
         This function summarizes the data in the portrayals deque
@@ -941,7 +983,7 @@ namespace Anti36Manager {
 
 
       // rearrange the files by last interaction
-      std::sort(unsortedPortrayalsPaths.begin(), unsortedPortrayalsPaths.end(),
+      std::sort(unsortedPortrayalsPaths.begin(), unsortedPortrayalsPaths.end(), // Since no pointers are used, the deque is rearranged
         // If a is older (smaller) than b, a comes first
         [](const joat::VirtualPath& a, const joat::VirtualPath& b) {
           return a.lastInteraction < b.lastInteraction;
@@ -1439,6 +1481,8 @@ namespace Anti36Manager {
       console << SUBLINE << "'/save' -> save and exit";
       console << SUBLINE << "'/exit' or *enter* -> exit without saving";
       console << SUBLINE << "'/tags' -> show the tag chart";
+      console << SUBLINE << "'/squeeze' -> specify the index for the next unsorted file. Portrayals at or above this index will shift down.";
+      console << SUBLINE << "'/replace' -> select the index of the portrayal which is supposed to be replaced by the next unsorted file.";
       console << SUBLINE << "[Position in filesystem / Amount of changes / Total amount of files]\n";
 
 
@@ -1454,7 +1498,8 @@ namespace Anti36Manager {
 
         std::string pathShortend;
         for (unsigned short i = depthOfUnsortedFolder; i < depthOfUnsortedFile; ++i) {
-          pathShortend += unsortedPortrayalsPaths[positionInUnsortedFolder][i];
+          // pathShortend += unsortedPortrayalsPaths[positionInUnsortedFolder][i];
+          pathShortend += joat::shorten_str_if_necessary(unsortedPortrayalsPaths[positionInUnsortedFolder][i], recommendedSubfolderStringLenght);
 
           // Remove last dot to make output look better and add a backslash to indicate a subfolder
           if (pathShortend.back() == '.') {
