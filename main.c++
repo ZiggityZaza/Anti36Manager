@@ -470,6 +470,7 @@ namespace Anti36Manager {
   static constexpr char WELCOME_SCREEN_SORTING_OPTION = '0';
   static constexpr char WELCOME_SCREEN_VIEWING_OPTION = '1';
   static constexpr char WELCOME_SCREEN_SUMMARY_OPTION = '2';
+  static constexpr char WELCOME_SCREEN_LEAVING_OPTION = '3';
   static constexpr char WELCOME_SCREEN_ERROR_OPTION = -1;
 
   enum MediaType : char {
@@ -1363,6 +1364,7 @@ namespace Anti36Manager {
       console << SUBLINE << '\'' << WELCOME_SCREEN_SORTING_OPTION << "' -> sort files in \"" << UNSORTED_FOLDER_PATH << '"';
       console << SUBLINE << '\'' << WELCOME_SCREEN_VIEWING_OPTION << "' -> view portrayals by filters";
       console << SUBLINE << '\'' << WELCOME_SCREEN_SUMMARY_OPTION << "' -> sum up all gathered data";
+      console << SUBLINE << '\'' << WELCOME_SCREEN_LEAVING_OPTION << "' -> leave the program";
 
       console << "\n > ";
       return joat::question()[0];
@@ -2234,6 +2236,12 @@ namespace Anti36Manager {
             case WELCOME_SCREEN_SUMMARY_OPTION: {
               summarize();
               break;
+            }
+
+            case WELCOME_SCREEN_LEAVING_OPTION: {
+              console << "Goodbye!";
+              std::flush(std::cout);
+              std::exit(0);
             }
 
             default: {
