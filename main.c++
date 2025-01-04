@@ -423,6 +423,9 @@ namespace joat { // Jack of all trades (Helper functions and classes)
       bool operator==(const VirtualPath &other) const {
         return path == other.path;
       }
+      bool operator!=(const VirtualPath &other) const {
+        return path != other.path;
+      }
 
       static size_t file_size(const std::string &filePath) {
         return std::filesystem::file_size(filePath);
@@ -463,7 +466,7 @@ namespace Anti36Manager {
   // Default values and Configs
   std::ostream& console = std::cout;
   using index_t = unsigned short;
-  static constexpr bool DEBUGGING = true;
+  static constexpr bool DEBUGGING = false;
   static constexpr char WELCOME_SCREEN_SORTING_OPTION = '0';
   static constexpr char WELCOME_SCREEN_VIEWING_OPTION = '1';
   static constexpr char WELCOME_SCREEN_SUMMARY_OPTION = '2';
@@ -592,7 +595,6 @@ namespace Anti36Manager {
 
 
 
-
   class Main {
     /*
       The difference between the namespace and the class is that the class
@@ -632,7 +634,7 @@ namespace Anti36Manager {
     Persona* currentPersona = nullptr;
     std::deque<joat::VirtualPath> unsortedPortrayalsPaths;
     struct aboutToBeSortedPortrayal {
-      joat::VirtualPath* currentPath;
+      joat::VirtualPath currentPath;
       std::deque<char> assignedTags;
       index_t squeezeInAs;
       Portrayal* replacementFor;
@@ -1429,7 +1431,7 @@ namespace Anti36Manager {
         return;
       }
 
-      else if (aboutToBeSortedPortrayalsQueue.empty() or aboutToBeSortedPortrayalsQueue.back().currentPath != &unsortedPortrayalsPaths[positionInUnsortedFolder-1]) {
+      else if (aboutToBeSortedPortrayalsQueue.empty() or aboutToBeSortedPortrayalsQueue.back().currentPath != unsortedPortrayalsPaths[positionInUnsortedFolder-1]) {
         console << WSUBSUBLINE << "Went back to the previous file.";
       }
 
@@ -1537,7 +1539,12 @@ namespace Anti36Manager {
 
 
       // Continue as planned
-      replacingPortrayal = portrayalsByPersona[currentPersona][replacingId - 1];
+      for (Portrayal* portrayal : portrayalsByPersona[currentPersona]) {
+        if (portrayal->index == replacingId) {
+          replacingPortrayal = portrayal;
+          break;
+        }
+      }
       userInput = "/replace:";
     }
 
@@ -1594,7 +1601,7 @@ namespace Anti36Manager {
         }
 
         else if (userInput == "/tags") {
-          console << get_tag_chart(true);
+          console << get_tag_chart(false);
           continue;
         }
 
@@ -1663,7 +1670,7 @@ namespace Anti36Manager {
           console << WSUBSUBLINE << "Replacing " << replacingPortrayal->where->filename();
         }
 
-        aboutToBeSortedPortrayalsQueue.push_back({&unsortedPortrayalsPaths[positionInUnsortedFolder], validTags, squeezedInAs, replacingPortrayal});
+        aboutToBeSortedPortrayalsQueue.push_back({unsortedPortrayalsPaths[positionInUnsortedFolder], validTags, squeezedInAs, replacingPortrayal});
         ++positionInUnsortedFolder;
       }
 
@@ -1693,15 +1700,15 @@ namespace Anti36Manager {
 
         aboutToBeSortedPortrayal& selectedUnsortedPortrayal = aboutToBeSortedPortrayalsQueue.front();
 
-        console << SUBLINE << joat::shorten_str_if_necessary(selectedUnsortedPortrayal.currentPath->path) << " -> ";
+        console << SUBLINE << joat::shorten_str_if_necessary(selectedUnsortedPortrayal.currentPath.path) << " -> ";
 
 
         if (selectedUnsortedPortrayal.replacementFor != NOT_MEANT_TO_REPLACE_CODE) {
           console << selectedUnsortedPortrayal.replacementFor->where->filename() << " (replaced)";
           if (DEBUGGING) {
-            selectedUnsortedPortrayal.currentPath->pretend_to_move_to(selectedUnsortedPortrayal.replacementFor->where->path);
+            selectedUnsortedPortrayal.currentPath.pretend_to_move_to(selectedUnsortedPortrayal.replacementFor->where->path);
           } else {
-            selectedUnsortedPortrayal.currentPath->move_to(selectedUnsortedPortrayal.replacementFor->where->path);
+            selectedUnsortedPortrayal.currentPath.move_to(selectedUnsortedPortrayal.replacementFor->where->path);
           }
           aboutToBeSortedPortrayalsQueue.pop_front();
           continue;
@@ -1722,8 +1729,9 @@ namespace Anti36Manager {
 
 
         // Integrate into the Anti36 ecosystem
-        files.push_back(*selectedUnsortedPortrayal.currentPath); // Copy current (wrong) path into the files deque
-        unsortedPortrayalsPaths.erase(std::remove(unsortedPortrayalsPaths.begin(), unsortedPortrayalsPaths.end(), *selectedUnsortedPortrayal.currentPath), unsortedPortrayalsPaths.end());
+        files.push_back(selectedUnsortedPortrayal.currentPath); // Copy current (wrong) path into the files deque
+        unsortedPortrayalsPaths.erase(std::remove(unsortedPortrayalsPaths.begin(), unsortedPortrayalsPaths.end(), selectedUnsortedPortrayal.currentPath), unsortedPortrayalsPaths.end());
+
 
         portrayals.push_back({selectedUnsortedPortrayal.squeezeInAs, currentPersona, selectedUnsortedPortrayal.assignedTags, &files.back()});
         portrayalsByPersona[currentPersona].push_back(&portrayals.back());
@@ -1747,7 +1755,7 @@ namespace Anti36Manager {
           newPath += tag;
         }
         newPath += '_';
-        newPath += selectedUnsortedPortrayal.currentPath->extension();
+        newPath += selectedUnsortedPortrayal.currentPath.extension();
 
         if (DEBUGGING) {
           files.back().pretend_to_move_to(newPath);
@@ -1755,7 +1763,7 @@ namespace Anti36Manager {
           files.back().move_to(newPath);
         }
 
-        console << portrayals.back().where->filename() << " (squeezed)";
+        console << portrayals.back().where->filename();
 
 
         aboutToBeSortedPortrayalsQueue.pop_front();
