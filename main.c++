@@ -391,7 +391,7 @@ namespace joat { // Jack of all trades (Helper functions and classes)
       const std::filesystem::path std_path() const {
         return std::filesystem::path(path); // C:\Users\txts\exmpl.txt
       }
-      const unsigned short depth() const { // 3
+      const unsigned short depth() const { // 3 (0 -> C:\, 1 -> Users, 2 -> txts, 3 -> exmpl.txt)
         if (this->path.back() == '\\') {
           return std::count(path.begin(), path.end(), '\\') - 1;
         }
@@ -399,6 +399,7 @@ namespace joat { // Jack of all trades (Helper functions and classes)
       }
 
       void move_to(const std::string &newPath) {
+        // Deletes the old file and creates a new one with the same content
         std::filesystem::rename(std::filesystem::path(path), std::filesystem::path(newPath));
         this->path = newPath;
         this->lastInteraction = last_modified(path);
@@ -421,6 +422,9 @@ namespace joat { // Jack of all trades (Helper functions and classes)
       }
       bool operator==(const VirtualPath &other) const {
         return path == other.path;
+      }
+      bool operator!=(const VirtualPath &other) const {
+        return path != other.path;
       }
 
       static size_t file_size(const std::string &filePath) {
@@ -462,10 +466,11 @@ namespace Anti36Manager {
   // Default values and Configs
   std::ostream& console = std::cout;
   using index_t = unsigned short;
-  static constexpr bool DEBUGGING = true;
+  static constexpr bool DEBUGGING = false;
   static constexpr char WELCOME_SCREEN_SORTING_OPTION = '0';
   static constexpr char WELCOME_SCREEN_VIEWING_OPTION = '1';
   static constexpr char WELCOME_SCREEN_SUMMARY_OPTION = '2';
+  static constexpr char WELCOME_SCREEN_LEAVING_OPTION = '3';
   static constexpr char WELCOME_SCREEN_ERROR_OPTION = -1;
 
   enum MediaType : char {
@@ -497,7 +502,9 @@ namespace Anti36Manager {
   // Constants
   static constexpr const char* ANTI36_FOLDER = "E:\\Anti36Local";
   static constexpr const char* UNSORTED_FOLDER_PATH = "E:\\$unsorted";
-  static constexpr const index_t INDEX_ERROR_VALUE = ~index_t(0); // Error value for index_t (largest possible value)
+  static constexpr index_t INDEX_ERROR_VALUE = ~index_t(0); // Error value for index_t (largest possible value)
+  static constexpr index_t INDEX_AUTO_INCREMENT_CODE = 0;
+  static constexpr Portrayal* NOT_MEANT_TO_REPLACE_CODE = nullptr;
 
 
   // Template for portrayal HTML
@@ -589,7 +596,6 @@ namespace Anti36Manager {
 
 
 
-
   class Main {
     /*
       The difference between the namespace and the class is that the class
@@ -610,6 +616,15 @@ namespace Anti36Manager {
     std::unordered_map<Persona*, std::deque<Portrayal*>> portrayalsByPersona;
     std::unordered_map<char, std::deque<Portrayal*>> portrayalsByTag;
     std::unordered_map<MediaType, std::deque<Portrayal*>> portrayalsByType;
+    /*
+      Important note: The order of portrayals in easy-access containers typically
+      follows the first-to-last index, as std::filesystem::recursive_directory_iterator
+      traverses directories surface-first alphabetically. However, some methods may
+      disrupt this order by swapping indexes.
+
+      Refreshing the program resolves this by reloading and re-adding content.
+    */
+
 
     // Filters
     std::deque<char> byTagsFilter;
@@ -620,8 +635,10 @@ namespace Anti36Manager {
     Persona* currentPersona = nullptr;
     std::deque<joat::VirtualPath> unsortedPortrayalsPaths;
     struct aboutToBeSortedPortrayal {
-      joat::VirtualPath* currentPath;
+      joat::VirtualPath currentPath;
       std::deque<char> assignedTags;
+      index_t squeezeInAs;
+      Portrayal* replacementFor;
     };
     std::deque<aboutToBeSortedPortrayal> aboutToBeSortedPortrayalsQueue; // Enables skipping/undoing/redoing specific unsorted portrayals
     std::deque<Portrayal*> collection;
@@ -941,7 +958,7 @@ namespace Anti36Manager {
 
 
       // rearrange the files by last interaction
-      std::sort(unsortedPortrayalsPaths.begin(), unsortedPortrayalsPaths.end(),
+      std::sort(unsortedPortrayalsPaths.begin(), unsortedPortrayalsPaths.end(), // Since no pointers are used, the deque is rearranged
         // If a is older (smaller) than b, a comes first
         [](const joat::VirtualPath& a, const joat::VirtualPath& b) {
           return a.lastInteraction < b.lastInteraction;
@@ -1347,6 +1364,7 @@ namespace Anti36Manager {
       console << SUBLINE << '\'' << WELCOME_SCREEN_SORTING_OPTION << "' -> sort files in \"" << UNSORTED_FOLDER_PATH << '"';
       console << SUBLINE << '\'' << WELCOME_SCREEN_VIEWING_OPTION << "' -> view portrayals by filters";
       console << SUBLINE << '\'' << WELCOME_SCREEN_SUMMARY_OPTION << "' -> sum up all gathered data";
+      console << SUBLINE << '\'' << WELCOME_SCREEN_LEAVING_OPTION << "' -> leave the program";
 
       console << "\n > ";
       return joat::question()[0];
@@ -1381,14 +1399,10 @@ namespace Anti36Manager {
         chosen persona.
       */
 
-
-      // Define variables
       std::string userInput;
       currentPersona = nullptr;
       Origin* originChoiceResult;
 
-
-      // Get origin choice
       console << get_origin_chart(false, true) << "\n Choose an origin > ";
 
       while (true) {
@@ -1412,6 +1426,132 @@ namespace Anti36Manager {
 
 
 
+    void user_undid_last_change(unsigned int& positionInUnsortedFolder) {
+
+      if (positionInUnsortedFolder == 0) {
+        console << WSUBSUBLINE << "Nothing to undo.";
+        return;
+      }
+
+      else if (aboutToBeSortedPortrayalsQueue.empty() or aboutToBeSortedPortrayalsQueue.back().currentPath != unsortedPortrayalsPaths[positionInUnsortedFolder-1]) {
+        console << WSUBSUBLINE << "Went back to the previous file.";
+      }
+
+      else {
+        console << WSUBSUBLINE << "Undid last change.";
+        aboutToBeSortedPortrayalsQueue.pop_back();
+      }
+
+      positionInUnsortedFolder--;
+    }
+    std::string get_short_unsorted_file_path(joat::VirtualPath& file, unsigned int positionInUnsortedFolder) {
+
+      // Shortened path to allow subfolder to be shown
+      unsigned short depthOfUnsortedFile = file.depth();
+      unsigned short depthOfUnsortedFolder = joat::VirtualPath(UNSORTED_FOLDER_PATH).depth();
+      uint8_t recommendedSubfolderStringLenght = 5;
+
+      std::string pathShortend;
+      for (uint8_t folderDepthPos = depthOfUnsortedFolder; folderDepthPos < depthOfUnsortedFile; ++folderDepthPos) { // Start with relative path
+        pathShortend += joat::shorten_str_if_necessary(file[folderDepthPos], recommendedSubfolderStringLenght);
+
+        // Remove last dot to make output look better and add a backslash to indicate a subfolder
+        if (pathShortend.back() == '.') {
+          pathShortend.pop_back();
+        }
+        pathShortend += '\\';
+      }
+      pathShortend += joat::shorten_str_if_necessary(file.filename());
+
+      pathShortend += '[';
+      pathShortend += std::to_string(positionInUnsortedFolder + 1);
+      pathShortend += '/';
+      pathShortend += std::to_string(unsortedPortrayalsPaths.size());
+      pathShortend += '/';
+      pathShortend += std::to_string(aboutToBeSortedPortrayalsQueue.size());
+      pathShortend += ']';
+
+      return pathShortend; // Example: "$unso..\subfo..\file.jpg[1/3/2]"
+    }
+    void user_squeeze_and_choose_tags(std::string& userInput, index_t& squeezedInAs) {
+
+      std::deque<std::string> splitUserInput = joat::separate(userInput.substr(9), ','); // Remove the "/squeeze:" part
+
+      if (splitUserInput.size() != 2) {
+        console << WSUBSUBLINE << "One comma is needed.";
+        squeezedInAs = INDEX_ERROR_VALUE;
+        return;
+      }
+      else if (splitUserInput[0].empty() or splitUserInput[1].empty()) {
+        console << WSUBSUBLINE << "'newIndex' or 'tags' are empty.";
+        squeezedInAs = INDEX_ERROR_VALUE;
+        return;
+      }
+
+      squeezedInAs = joat::stoi(splitUserInput[0]);
+
+      if (squeezedInAs == joat::STOI_ERROR_CODE) {
+        console << WSUBSUBLINE << "The index '" << splitUserInput[0] << "' is not a number.";
+        squeezedInAs = INDEX_ERROR_VALUE;
+        return;
+      }
+      else if (squeezedInAs < 1) {
+        console << WSUBSUBLINE << "Index is smaller than possible.";
+        squeezedInAs = INDEX_ERROR_VALUE;
+        return;
+      }
+      else if (squeezedInAs > portrayalsByPersona[currentPersona].size() + 1) {
+        console << WSUBSUBLINE << "Squeezing only works if the index is smaller than the amount of portrayals + 1.";
+        squeezedInAs = INDEX_ERROR_VALUE;
+        return;
+      }
+      else if (squeezedInAs == joat::STOI_EMPTY_CODE) {
+        squeezedInAs = INDEX_ERROR_VALUE;
+        return;
+      }
+
+      // Continue as planned
+      userInput = splitUserInput[1];
+    }
+    void user_replaceses_portrayal(std::string& userInput, Portrayal*& replacingPortrayal) {
+
+      std::string splitUserInput = userInput.substr(9); // Remove the "/replace:" part
+
+      index_t replacingId = joat::stoi(splitUserInput);
+      
+      if (replacingId == joat::STOI_ERROR_CODE) {
+        console << WSUBSUBLINE << "The index \"" << splitUserInput << "\" is not a number.";
+        replacingPortrayal = NOT_MEANT_TO_REPLACE_CODE;
+        return;
+      }
+      else if (replacingId < 1) {
+        console << WSUBSUBLINE << "Index is smaller than possible.";
+        replacingPortrayal = NOT_MEANT_TO_REPLACE_CODE;
+        return;
+      }
+      else if (replacingId > portrayalsByPersona[currentPersona].size()) {
+        console << WSUBSUBLINE << "Index is larger than possible.";
+        replacingPortrayal = NOT_MEANT_TO_REPLACE_CODE;
+        return;
+      }
+      else if (replacingId == joat::STOI_EMPTY_CODE) {
+        replacingPortrayal = NOT_MEANT_TO_REPLACE_CODE;
+        return;
+      }
+
+
+      // Continue as planned
+      for (Portrayal* portrayal : portrayalsByPersona[currentPersona]) {
+        if (portrayal->index == replacingId) {
+          replacingPortrayal = portrayal;
+          break;
+        }
+      }
+      userInput = "/replace:";
+    }
+
+
+
     void user_assign_tags_to_unsorted_files() {
       /*
         This function will ask the user to assign tags to each file in
@@ -1427,7 +1567,7 @@ namespace Anti36Manager {
         smaller is correct AND (!) executed.
       */
 
-     if (unsortedPortrayalsPaths.empty()) {
+      if (unsortedPortrayalsPaths.empty()) {
        console << "Add some files into \"" << UNSORTED_FOLDER_PATH << "\" first.";
        return;
       }
@@ -1437,8 +1577,10 @@ namespace Anti36Manager {
       console << SUBLINE << "'/skip' or *enter* -> continue to the next file";
       console << SUBLINE << "'/undo' -> go back to the previous file";
       console << SUBLINE << "'/save' -> save and exit";
-      console << SUBLINE << "'/exit' or *enter* -> exit without saving";
+      console << SUBLINE << "'/exit' -> exit without saving";
       console << SUBLINE << "'/tags' -> show the tag chart";
+      console << SUBLINE << "'/squeeze:ownId,tags' -> put this portrayal infront of another";
+      console << SUBLINE << "'/replace:replacedId' -> replace this portrayal with another";
       console << SUBLINE << "[Position in filesystem / Amount of changes / Total amount of files]\n";
 
 
@@ -1446,120 +1588,100 @@ namespace Anti36Manager {
       unsigned int positionInUnsortedFolder = 0; // The position of the current file in the unsortedPortrayals deque
       while (positionInUnsortedFolder < unsortedPortrayalsPaths.size()) {
 
-
-        // Shortened path to allow subfolder to be shown
-        unsigned short depthOfUnsortedFile = unsortedPortrayalsPaths[positionInUnsortedFolder].depth();
-        unsigned short depthOfUnsortedFolder = joat::VirtualPath(UNSORTED_FOLDER_PATH).depth();
-        uint8_t recommendedSubfolderStringLenght = 5;
-
-        std::string pathShortend;
-        for (unsigned short i = depthOfUnsortedFolder; i < depthOfUnsortedFile; ++i) {
-          pathShortend += unsortedPortrayalsPaths[positionInUnsortedFolder][i];
-
-          // Remove last dot to make output look better and add a backslash to indicate a subfolder
-          if (pathShortend.back() == '.') {
-            pathShortend.pop_back();
-          }
-          pathShortend += '\\';
-        }
-        pathShortend += unsortedPortrayalsPaths[positionInUnsortedFolder].filename();
+        index_t squeezedInAs = INDEX_AUTO_INCREMENT_CODE;
+        Portrayal* replacingPortrayal = NOT_MEANT_TO_REPLACE_CODE;
+        joat::VirtualPath& file = unsortedPortrayalsPaths[positionInUnsortedFolder];
 
 
-        console << SUBLINE << pathShortend;
-        console << '[' << positionInUnsortedFolder + 1 << '/' << aboutToBeSortedPortrayalsQueue.size() << '/' << unsortedPortrayalsPaths.size() << "]: ";
+        console << SUBLINE << get_short_unsorted_file_path(file, positionInUnsortedFolder) << ": ";
         std::string userInput = joat::question();
 
         if (userInput.empty() or userInput == "/skip") {
-          console << WSUBSUBLINE << "Skipped " << pathShortend << '\n';
+          console << WSUBSUBLINE << "Skipped" << '\n';
           ++positionInUnsortedFolder;
           continue;
         }
 
-        if (userInput == "/tags") {
-          console << get_tag_chart(true);
+        else if (userInput == "/tags") {
+          console << get_tag_chart(false);
           continue;
         }
 
-        if (userInput == "/exit") {
+        else if (userInput == "/exit") {
           console << WSUBSUBLINE << "Reverting back to the previous state.";
           aboutToBeSortedPortrayalsQueue.clear();
           return;
         }
 
-        if (userInput == "/save") {
-          console << WSUBSUBLINE << "Applying " << aboutToBeSortedPortrayalsQueue.size() << " changes and exiting. Leave the rest to the program.";
+        else if (userInput == "/save") {
+          console << WSUBSUBLINE << "Applying " << aboutToBeSortedPortrayalsQueue.size() << " changes and exiting.";
           return;
         }
 
-
-        if (userInput == "/undo") {
-
-          // Nothing to undo at all
-          if (positionInUnsortedFolder == 0 and aboutToBeSortedPortrayalsQueue.empty()) {
-            console << WSUBSUBLINE << "Nothing to undo.";
-            continue;
-          } else if (positionInUnsortedFolder == 0 and !aboutToBeSortedPortrayalsQueue.empty()) {
-            console << WSUBSUBLINE << "Reverted back to the previous state. No changes made.";
-            aboutToBeSortedPortrayalsQueue.clear();
-            continue;
-          }
-
-          // Undo skipping
-          // If there has been a change to a file at all
-          if (!aboutToBeSortedPortrayalsQueue.empty()) {
-            // If the last change wasn't assigning tags to an unsorted portrayal
-            if (aboutToBeSortedPortrayalsQueue.back().currentPath != &unsortedPortrayalsPaths[positionInUnsortedFolder]) { // Seg fault when trying to access the last element of an empty deque
-              console << WSUBSUBLINE << "Reverted back to the previous file.";
-              positionInUnsortedFolder--;
-              continue;
-            }
-          } else if (aboutToBeSortedPortrayalsQueue.empty() and positionInUnsortedFolder > 0) {
-            console << WSUBSUBLINE << "Reverted back to the previous file.";
-            positionInUnsortedFolder--;
-            continue;
-          }
-
-          console << WSUBSUBLINE << "Undid last change.";
-          aboutToBeSortedPortrayalsQueue.pop_back();
-          positionInUnsortedFolder--;
+        else if (userInput == "/undo") {
+          user_undid_last_change(positionInUnsortedFolder);
           continue;
+        }
+
+        else if (userInput.find("/squeeze:") == 0) {
+          user_squeeze_and_choose_tags(userInput, squeezedInAs);
+          if (squeezedInAs == INDEX_ERROR_VALUE) {
+            ++positionInUnsortedFolder;
+            continue;
+          }
+        }
+
+        else if (userInput.find("/replace:") == 0) {
+          user_replaceses_portrayal(userInput, replacingPortrayal);
+          if (replacingPortrayal == NOT_MEANT_TO_REPLACE_CODE) {
+            ++positionInUnsortedFolder;
+            continue;
+          }
         }
 
 
         std::deque<char> validTags;
 
-        for (char tag : userInput) {
-          if (!tag_exists(tag)) {
-            console << WSUBSUBLINE << "No tag with key '" << tag << "' exists.\n";
-            continue;
+        if (userInput != "/replace:") { // Tags already determined from replaced portrayal
+          for (char tag : userInput) {
+            if (!tag_exists(tag)) {
+              console << WSUBSUBLINE << "No tag with key '" << tag << "' exists.\n";
+              continue;
+            }
+
+            if (joat::does_this_exist_in_deque(validTags, tag)) {
+              console << WSUBSUBLINE << TAGS_LOOKUP.at(tag) << " (" << tag << ") is already assigned.\n";
+              continue;
+            }
+
+            console << WSUBSUBLINE << "Assigned " << TAGS_LOOKUP.at(tag) << " (" << tag << ")\n";
+            validTags.push_back(tag);
           }
 
-          if (joat::does_this_exist_in_deque(validTags, tag)) {
-            console << WSUBSUBLINE << TAGS_LOOKUP.at(tag) << " (" << tag << ") is already assigned.\n";
+          if (validTags.empty()) {
+            console << WSUBSUBLINE << "None of these were valid. Let's try again.";
             continue;
           }
-
-          console << WSUBSUBLINE << "Assigned " << TAGS_LOOKUP.at(tag) << " (" << tag << ")\n";
-          validTags.push_back(tag);
-        }
-
-        if (validTags.empty()) {
-          console << WSUBSUBLINE << "None of these were valid. Let's try again.";
-          continue;
         }
 
 
-        // Add to the queue
-        aboutToBeSortedPortrayalsQueue.push_back({&unsortedPortrayalsPaths[positionInUnsortedFolder], validTags});
+        if (squeezedInAs != INDEX_AUTO_INCREMENT_CODE) {
+          console << WSUBSUBLINE << "Squeezing in as " << squeezedInAs;
+        }
+        if (replacingPortrayal != NOT_MEANT_TO_REPLACE_CODE) {
+          console << WSUBSUBLINE << "Replacing " << replacingPortrayal->where->filename();
+        }
+
+        aboutToBeSortedPortrayalsQueue.push_back({unsortedPortrayalsPaths[positionInUnsortedFolder], validTags, squeezedInAs, replacingPortrayal});
         ++positionInUnsortedFolder;
       }
 
       if (!aboutToBeSortedPortrayalsQueue.empty()) {
-        console << SUBLINE << "Done and dusted. You've reached the end and the program will continue from here.";
+        console << SUBLINE << "Done and dusted. You've reached the end.";
       } else {
         console << SUBLINE << "No tags were assigned. No changes made.";
       }
-      
+
       console << SUBLINE << "Press enter to go back to main-menu..."; std::cin.get(); // Pause
     }
 
@@ -1576,57 +1698,78 @@ namespace Anti36Manager {
       console << "Placing " << aboutToBeSortedPortrayalsQueue.size() << " files into the Anti36 ecosystem";
 
 
-      for (auto& [file, assignedTags] : aboutToBeSortedPortrayalsQueue) {
+      while (!aboutToBeSortedPortrayalsQueue.empty()) {
 
-        console << SUBLINE << file->path << " -> ";
+        aboutToBeSortedPortrayal& selectedUnsortedPortrayal = aboutToBeSortedPortrayalsQueue.front();
 
-
-        index_t newIndex = portrayalsByPersona[currentPersona].size() + 1;
-        Persona* persona = currentPersona;
-        std::deque<char> newTags = assignedTags;
+        console << SUBLINE << joat::shorten_str_if_necessary(selectedUnsortedPortrayal.currentPath.path) << " -> ";
 
 
-        std::string newPath = ANTI36_FOLDER;
-        newPath += '\\';
-        newPath += persona->origin->name;
-        newPath += '\\';
-        newPath += persona->name;
-        newPath += '\\';
-        newPath += std::to_string(newIndex);
-        newPath += '_';
-        for (char tag : newTags) {
-          newPath += tag;
-        }
-        newPath += '_';
-        newPath += file->extension();
-
-
-        if (!DEBUGGING) {
-          file->move_to(newPath);
-        } else {
-          file->pretend_to_move_to(newPath);
+        if (selectedUnsortedPortrayal.replacementFor != NOT_MEANT_TO_REPLACE_CODE) {
+          console << selectedUnsortedPortrayal.replacementFor->where->filename() << " (replaced)";
+          if (DEBUGGING) {
+            selectedUnsortedPortrayal.currentPath.pretend_to_move_to(selectedUnsortedPortrayal.replacementFor->where->path);
+          } else {
+            selectedUnsortedPortrayal.currentPath.move_to(selectedUnsortedPortrayal.replacementFor->where->path);
+          }
+          aboutToBeSortedPortrayalsQueue.pop_front();
+          continue;
         }
 
+        else if (selectedUnsortedPortrayal.squeezeInAs != INDEX_AUTO_INCREMENT_CODE) {
+          // Shift every following portrayal down by one
+          for (Portrayal* portrayal : portrayalsByPersona[currentPersona]) {
+            if (portrayal->index >= selectedUnsortedPortrayal.squeezeInAs) {
+              change_portrayal_index(portrayal, portrayal->index + 1);
+            }
+          }
+        }
 
-        // Move file to the new path
-        files.push_back(*file);
-        unsortedPortrayalsPaths.erase(std::remove(unsortedPortrayalsPaths.begin(), unsortedPortrayalsPaths.end(), *file), unsortedPortrayalsPaths.end());
+        else {
+          selectedUnsortedPortrayal.squeezeInAs = portrayalsByPersona[currentPersona].size() + 1;
+        }
 
 
         // Integrate into the Anti36 ecosystem
-        portrayals.push_back({newIndex, persona, newTags, &files.back()});
+        files.push_back(selectedUnsortedPortrayal.currentPath); // Copy current (wrong) path into the files deque
+        unsortedPortrayalsPaths.erase(std::remove(unsortedPortrayalsPaths.begin(), unsortedPortrayalsPaths.end(), selectedUnsortedPortrayal.currentPath), unsortedPortrayalsPaths.end());
 
-        portrayalsByPersona[persona].push_back(&portrayals.back());
-        portrayalsByOrigin[origin_exists(persona->origin->name)].push_back(&portrayals.back()); // Work around for const
+
+        portrayals.push_back({selectedUnsortedPortrayal.squeezeInAs, currentPersona, selectedUnsortedPortrayal.assignedTags, &files.back()});
+        portrayalsByPersona[currentPersona].push_back(&portrayals.back());
+        portrayalsByOrigin[origin_exists(currentPersona->origin->name)].push_back(&portrayals.back());
         for (char tag : portrayals.back().tags) {
           portrayalsByTag[tag].push_back(&portrayals.back());
         }
         portrayalsByType[EXTENSION_TO_MEDIA.at(portrayals.back().where->extension())].push_back(&portrayals.back());
 
-        console << portrayals.back().where->filename();
-      }
 
-      aboutToBeSortedPortrayalsQueue.clear();
+        // Move file to the new path
+        std::string newPath = ANTI36_FOLDER;
+        newPath += '\\';
+        newPath += currentPersona->origin->name;
+        newPath += '\\';
+        newPath += currentPersona->name;
+        newPath += '\\';
+        newPath += std::to_string(selectedUnsortedPortrayal.squeezeInAs);
+        newPath += '_';
+        for (char tag : selectedUnsortedPortrayal.assignedTags) {
+          newPath += tag;
+        }
+        newPath += '_';
+        newPath += selectedUnsortedPortrayal.currentPath.extension();
+
+        if (DEBUGGING) {
+          files.back().pretend_to_move_to(newPath);
+        } else {
+          files.back().move_to(newPath);
+        }
+
+        console << portrayals.back().where->filename();
+
+
+        aboutToBeSortedPortrayalsQueue.pop_front();
+      }
     }
 
 
@@ -2093,6 +2236,12 @@ namespace Anti36Manager {
             case WELCOME_SCREEN_SUMMARY_OPTION: {
               summarize();
               break;
+            }
+
+            case WELCOME_SCREEN_LEAVING_OPTION: {
+              console << "Goodbye!";
+              std::flush(std::cout);
+              std::exit(0);
             }
 
             default: {
