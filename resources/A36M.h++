@@ -218,6 +218,8 @@ namespace Anti36Manager {
     MediaType byTypeFilter = BOTH;
 
     // Other variables
+    cslib::LocalServer localServer;
+
     Persona* currentPersona = nullptr;
     std::deque<cslib::VirtualPath> unsortedPortrayalsPaths;
     struct aboutToBeSortedPortrayal {
@@ -486,6 +488,67 @@ namespace Anti36Manager {
         console << " @ " << unsortedPortrayal.lastInteraction;
       }
       console << '\n';
+    }
+    std::string summarize_json() {
+      /*
+        This function summarizes the data in the portrayals deque
+        and returns it as a JSON string using nlohmann::json.
+      */
+
+      nlohmann::json result;
+
+      // Pillar containers
+      result["folders"] = {};
+      for (const cslib::VirtualPath& folder : folders) {
+        result["folders"].push_back(folder.path);
+      }
+      result["files"] = {};
+      for (const cslib::VirtualPath& file : files) {
+        result["files"].push_back(file.path);
+      }
+      result["origins"] = {};
+      for (Origin& origin : origins) {
+        result["origins"][origin.name] = {};
+        for (Persona* persona : personasByOrigin[&origin]) {
+          result["origins"][origin.name][persona->name] = {};
+          for (Portrayal* portrayal : portrayalsByPersona[persona]) {
+            result["origins"][origin.name][persona->name].push_back(portrayal->where->filename());
+          }
+        }
+      }
+
+      // Filter containers
+      result["filters"] = {};
+      result["filters"]["tags"] = {};
+      for (char tag : byTagsFilter) {
+        result["filters"]["tags"].push_back(tag);
+      }
+      result["filters"]["origins"] = {};
+      for (const auto& [origin, personas] : byOriginsFilter) {
+        result["filters"]["origins"][origin->name] = {};
+        for (Persona* persona : personas) {
+          result["filters"]["origins"][origin->name].push_back(persona->name);
+        }
+      }
+
+      // Other containers
+      result["currentPersona"] = currentPersona ? currentPersona->name : "none";
+      result["unsortedPortrayals"] = {};
+      for (const cslib::VirtualPath& unsortedPortrayal : unsortedPortrayalsPaths) {
+        result["unsortedPortrayals"].push_back(unsortedPortrayal.path);
+      }
+
+      // Tags
+      result["tags"] = nlohmann::json::object();
+      for (const auto& [tag, tagMeaning] : TAGS_LOOKUP) {
+        std::string nlohmannJsonUsableTag = std::string(1, tag); // nlohmann::json thinks char is a number
+        result["tags"][nlohmannJsonUsableTag] = tagMeaning;
+      }
+
+      // Constants
+      result["UNSORTED_FOLDER_PATH"] = UNSORTED_FOLDER_PATH;
+
+      return result.dump(2);
     }
 
 
@@ -1787,11 +1850,17 @@ namespace Anti36Manager {
         full_duplicate_index_fix();
         console << NEXT;
         full_index_gaps_fix();
+        console << NEXT;
+        localServer.currentOutput = summarize_json();
+        localServer.start();
+
+        std::cin.get();
 
 
         // The user interface
         while (true) {
           char userInput = welcome(); // New-line is included in the function
+
 
           switch (userInput) {
             case WELCOME_SCREEN_SORTING_OPTION: {

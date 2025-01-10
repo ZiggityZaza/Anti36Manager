@@ -43,25 +43,20 @@
 // Stay silent if you would like to hear...
 
 
-#include "resources/cslib.h++" // Jack of all trades (Helper functions and classes)
-
+// #include "resources/cslib.h++" // Jack of all trades (Helper functions and classes)
+#include "resources/A36M.h++" // The main class
 
 
 int main() {
-  cslib::Connectivity::LocalServer server(cslib::Connectivity::DEFAULT_PORT);
-  cslib::Worker worker;
-  worker.add_task([&server] {
-    server.start();
-  });
-  server.stop();
-  std::string userInput;
-  while (true) {
-    std::cout << "Enter a command: ";
-    std::getline(std::cin, userInput);
-    if (userInput == "exit") {
-      break;
-    }
-    cslib::Connectivity::content = userInput;
-  }
-  return 0;
+  Anti36Manager::Main main;
+  // cslib::LocalServer server;
+  // cslib::Worker worker;
+  // worker.add_task([&server] {
+  //   server.start();
+  // });
+  // server.currentOutput = "{\"message\": \"Hello, World!\"}";
+  // while (true) {
+  //   std::cout << server.currentOutput << '\n';
+  //   std::cin.get();
+  // }
 }

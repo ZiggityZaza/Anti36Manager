@@ -229,35 +229,36 @@ namespace cslib { // Jack of all trades (Helper functions and classes)
   };
 
 
+  class LocalServer {
+    public:
+      uint16_t listening_port;
+      std::string currentOutput;
+      std::string lastInput;
+      httplib::Server server;
 
-  namespace Connectivity {
-    // Manage a local server
-    static constexpr uint16_t DEFAULT_PORT = 8080; // 8080 is the default port for HTTP servers
-    static constexpr uint16_t DEFAULT_TIMEOUT = 5; // 5 seconds
+      ~LocalServer() {server.stop();}
+      explicit LocalServer(uint16_t port = 8080) : listening_port(port) {}
 
-    static std::string content = "Hello,ghghhgf World!"; // Default content
-    class LocalServer {
-      public:
-        LocalServer(int port) : server_port(port) {}
+      void start() {
 
-        void start() {
-            // Add a simple route
-            server.Get("/", [](const httplib::Request&, httplib::Response& res) {
-              res.set_content(content, "text/plain");
-            });
+        // Display data on the server
+        server.Get("/", [this](const httplib::Request&, httplib::Response& res) {
+          res.set_header("Access-Control-Allow-Origin", "*");
+          res.set_content(currentOutput, "application/json");
+          std::cout << "Sent: " << currentOutput << '\n';
+        });
 
-            // Run the server
-            std::cout << "Server is running on http://localhost:" << server_port << '\n';
-            server.listen("localhost", server_port);
-        }
+        // Add a route that receives a POST request
+        server.Post("/post", [&](const httplib::Request& req, httplib::Response& res) {
+          res.set_header("Access-Control-Allow-Origin", "*");
+          res.set_content(req.body, "application/json");
+          lastInput = req.body;
+          std::cout << "Received: " << lastInput << '\n';
+        });
 
-        void stop() {
-            server.stop();
-        }
-
-      private:
-        httplib::Server server;  // HTTP server instance
-        int server_port;         // Port to listen on
+        // Run the server
+        std::cout << "Server is running on http://localhost:" << listening_port << '\n';
+        server.listen("localhost", listening_port);
     };
   };
 
