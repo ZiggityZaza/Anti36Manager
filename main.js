@@ -69,8 +69,23 @@ function set_unsorted_values() {
 
         // When clicked
         display.onclick = function() {
-            alert("Clicked on " + path);
-            console.log(unsortedList);
+            let workspace = document.getElementById("ws_selected");
+
+            // Place the media in the workspace
+            let workspaceMedia = null;
+            switch (extension) {
+                case "jpg": case "jpeg": case "png": case "gif": case "bmp": case "webp":
+                    workspaceMedia = document.createElement("img");
+                    break;
+                case "mp4": case "webm": case "mkv": case "avi":
+                    workspaceMedia = document.createElement("video");
+                    workspaceMedia.setAttribute("controls", "controls");
+            }
+            workspaceMedia.src = path;
+            workspaceMedia.id = "ws_selected";
+
+            // Clear the workspace when clicked
+            workspace.innerHTML = workspaceMedia.outerHTML;
         }
 
         unsortedList[0].appendChild(display); // Only supports first unsorted list
