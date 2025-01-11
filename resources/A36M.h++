@@ -128,7 +128,6 @@ namespace Anti36Manager {
   // Constants
   static constexpr const char* ANTI36_FOLDER = "E:\\Anti36Local";
   static constexpr const char* UNSORTED_FOLDER_PATH = "E:\\$unsorted";
-  static constexpr const char* PORTRAYAL_DUMP_PATH = "E:\\$portrayal_dump"; // Instead of deleting, the file is moved here to prevent data loss
   static constexpr index_t INDEX_AUTO_INCREMENT_CODE = ~index_t(0);
 
 
@@ -225,8 +224,6 @@ namespace Anti36Manager {
       ~LocalServer() {server.stop();}
 
       void start() {
-
-        // Run the server
         console << "Server is running on http://localhost:" << LISTENING_PORT << '\n';
         server.listen("localhost", LISTENING_PORT);
     };
@@ -376,14 +373,6 @@ namespace Anti36Manager {
         portrayalsByTag[tag].push_back(&portrayals.back());
       }
       portrayalsByType[EXTENSION_TO_MEDIA.at(files.back().extension())].push_back(&portrayals.back());
-    }
-    void move_and_replace_portrayal(size_t& currentLocationInUnsortedByIndex, Portrayal *const portrayalInQuestion) {
-      // Using std::rename to move the file so files deque is not updated.
-
-      std::filesystem::rename(portrayalInQuestion->where->path, PORTRAYAL_DUMP_PATH + '\\' + portrayalInQuestion->where->filename());
-      std::filesystem::rename(unsortedPortrayalsPaths[currentLocationInUnsortedByIndex].path, portrayalInQuestion->where->path);
-
-      unsortedPortrayalsPaths.erase(unsortedPortrayalsPaths.begin() + currentLocationInUnsortedByIndex);
     }
 
 
