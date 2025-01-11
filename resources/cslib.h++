@@ -171,95 +171,28 @@ namespace cslib { // Jack of all trades (Helper functions and classes)
   }
 
 
-  class Worker {
+  class DualOutput {
     /*
-      A second thread that can be used to run a function in the
-      background. It can only run non-returning functions as it
-      is meant to communicate via existing variables.
-
-      If idle or running is based on the tasks deque. If the deque
-      is empty, the worker is idle. If the deque is not empty, the
-      worker is running.
+      Everything that std::cout can but with the addition that
+      the output is also being written to a file.
     */
+
     public:
-      std::thread worker;
-      std::deque<std::function<void()>> tasks;
-      std::condition_variable waitUntil;
-      std::mutex keepMainThreadOnHold;
-      std::atomic<bool> isRunning = false;
+    std::ofstream file;
 
-      void add_task(std::function<void()> task) {
-        {
-          std::lock_guard<std::mutex> lock(keepMainThreadOnHold);
-          tasks.push_back(task);
-        }
-        waitUntil.notify_one();
-      }
+    DualOutput(std::string fileName) {
+      file.open(fileName);
+    }
+    ~DualOutput() {
+      file.close();
+    }
 
-      ~Worker() { // Holds main thread until all tasks are done
-        isRunning = false;
-        while (!tasks.empty()) {
-          std::this_thread::yield();
-        }
-        worker.join();
-      }
-
-      Worker() {
-        isRunning = true;
-        worker = std::thread([this] {
-          std::function<void()> currentTask;
-          while (isRunning or !tasks.empty()) {
-
-            std::unique_lock<std::mutex> lock(keepMainThreadOnHold);
-            waitUntil.wait(lock, [this] {return !tasks.empty();});
-
-            currentTask = std::move(tasks.front());
-            tasks.pop_front();
-            keepMainThreadOnHold.unlock();
-
-            try {
-              currentTask();
-            } catch (std::exception &e) {
-              std::cerr << "Worker thread error: " << e.what() << '\n';
-              std::abort(); // Abort before other data gets changed
-            }
-          }
-        });
-      }
-  };
-
-
-  class LocalServer {
-    public:
-      uint16_t listening_port;
-      std::string currentOutput;
-      std::string lastInput;
-      httplib::Server server;
-
-      ~LocalServer() {server.stop();}
-      explicit LocalServer(uint16_t port = 8080) : listening_port(port) {}
-
-      void start() {
-
-        // Display data on the server
-        server.Get("/", [this](const httplib::Request&, httplib::Response& res) {
-          res.set_header("Access-Control-Allow-Origin", "*");
-          res.set_content(currentOutput, "application/json");
-          std::cout << "Sent: " << currentOutput << '\n';
-        });
-
-        // Add a route that receives a POST request
-        server.Post("/post", [&](const httplib::Request& req, httplib::Response& res) {
-          res.set_header("Access-Control-Allow-Origin", "*");
-          res.set_content(req.body, "application/json");
-          lastInput = req.body;
-          std::cout << "Received: " << lastInput << '\n';
-        });
-
-        // Run the server
-        std::cout << "Server is running on http://localhost:" << listening_port << '\n';
-        server.listen("localhost", listening_port);
-    };
+    template <typename T>
+    DualOutput& operator<<(const T& output) {
+      std::cout << output;
+      file << output;
+      return *this;
+    }
   };
 
 
