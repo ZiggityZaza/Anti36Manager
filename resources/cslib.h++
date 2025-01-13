@@ -379,6 +379,7 @@ namespace cslib { // Jack of all trades (Helper functions and classes)
         return std::count(path.begin(), path.end(), '\\');
       }
 
+
       void move_to(const std::string &newPath) {
         // Deletes the old file and creates a new one with the same content
         std::filesystem::rename(std::filesystem::path(path), std::filesystem::path(newPath));

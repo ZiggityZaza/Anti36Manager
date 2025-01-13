@@ -90,7 +90,7 @@ namespace Anti36Manager {
   static constexpr const char* WSUBSUBLINE = "   > "; // Subsubsection without creating a new line
 
   // Default values and Configs
-  cslib::DualOutput console("E:\\log.txt");
+  cslib::DualOutput console("F:\\log.txt");
   using index_t = unsigned short;
   static constexpr bool DEBUGGING = false;
   static constexpr char WELCOME_SCREEN_SORTING_OPTION = '0';
@@ -126,8 +126,8 @@ namespace Anti36Manager {
 
 
   // Constants
-  static constexpr const char* ANTI36_FOLDER = "E:\\Anti36Local";
-  static constexpr const char* UNSORTED_FOLDER_PATH = "E:\\$unsorted";
+  static constexpr const char* ANTI36_FOLDER = "F:\\Anti36Local";
+  static constexpr const char* UNSORTED_FOLDER_PATH = "F:\\$unsorted";
   static constexpr index_t INDEX_AUTO_INCREMENT_CODE = ~index_t(0);
 
 
@@ -217,7 +217,6 @@ namespace Anti36Manager {
     public:
       static constexpr uint16_t LISTENING_PORT = 8080;
       static constexpr const char* CONTENT_TYPE = "application/json";
-      std::string currentOutput;
       std::string lastInput;
       httplib::Server server;
 
@@ -801,6 +800,7 @@ namespace Anti36Manager {
       console << NEXT;
       full_index_gaps_fix();
       console << NEXT;
+      console << "Refreshed the program";
     }
 
 
@@ -830,18 +830,99 @@ namespace Anti36Manager {
         console << NEXT;
 
 
-        // Display data on the server
-        localServer.server.Get("/updateplease", [this](const httplib::Request&, httplib::Response& res) {
+        localServer.server.Get("/anti36local", [this](const httplib::Request&, httplib::Response& res) {
           res.set_header("Access-Control-Allow-Origin", "*");
-          res.set_content("Updating...", localServer.CONTENT_TYPE);
-          refresh();
+          /*{
+          "Anti36Local": {
+            "Origin 1": {
+              "Persona 1": {
+                0: null, (this is always null as the key is the index)
+                1: {
+                  path: "E:\\Anti36Local\\Origin 1\\Persona 1\\1_ABCD_.jpg",
+                  tags: ["_A", "_B", "_C", "_D_"]
+                },
+                2: {
+                  path: "E:\\Anti36Local\\Origin 1\\Persona 1\\2_EFGH_.jpg",
+                  tags: ["_E", "_F", "_G", "_H_"]
+                },
+                ...
+              },
+              "Persona 2": {
+                ...
+              },
+              ...
+            },
+            "Origin 2": {
+              ...
+            },
+            ...
+            }
+          }*/
+          nlohmann::json output;
+          output["Anti36Local"] = {};
+          for (const Origin& origin : origins) {
+            output["Anti36Local"][origin.name] = {};
+            for (Persona* persona : personasByOrigin[origin_exists(origin.name)]) {
+              output["Anti36Local"][origin.name][persona->name] = {};
+              for (Portrayal* portrayal : portrayalsByPersona[persona]) {
+                output["Anti36Local"][origin.name][persona->name][portrayal->index]["path"] = portrayal->where->path;
+                for (char tag : portrayal->tags) {
+                  output["Anti36Local"][origin.name][persona->name][portrayal->index]["tags"].push_back(TAGS_LOOKUP.at(tag));
+                }
+              }
+            }
+          }
+          console << HEAD << "\"/anti36local\" sent: " << output.dump(1);
+          res.set_content(output.dump(), localServer.CONTENT_TYPE);
         });
+
+
+        localServer.server.Get("/existing_tags", [this](const httplib::Request&, httplib::Response& res) {
+          res.set_header("Access-Control-Allow-Origin", "*");
+          // ["_A", "_B",..., "_Z", "_a", "_b",..., "_z", "_0", "_1",..., "_9"]
+          nlohmann::json output;
+          for (const auto& [tag, itsMeaning] : TAGS_LOOKUP) {
+            output.push_back(itsMeaning);
+          }
+          console << HEAD << "\"/existing_tags\" sent: " << output.dump();
+          res.set_content(output.dump(), localServer.CONTENT_TYPE);
+        });
+
+
+        localServer.server.Get("/unsorted", [this](const httplib::Request&, httplib::Response& res) {
+          res.set_header("Access-Control-Allow-Origin", "*");
+          /*
+          ["E:\\$unsorted\\someImage.jpg","E:\\$unsorted\\someVideo.mp4",...
+          "E:\\$unsorted\\someOtherImage.png","E:\\$unsorted\\someGif.mp4"]
+          */
+          std::string output = "[";
+
+          for (const cslib::VirtualPath& path : unsortedPortrayalsPaths) {
+            output += '"';
+            /* JavaScript thinks \\ means \ so use \\\\ to make it think it's \\ */
+            for (char c : path.path) { // Quick fix
+              if (c == '\\') {
+                output += "\\\\";
+              } else {
+                output += c;
+              }
+            }
+            output += "\",";
+          }
+
+          output.pop_back();
+          output += "]";
+          console << HEAD << "Sent: " << output;
+          res.set_content(output, localServer.CONTENT_TYPE);
+        });
+
 
         localServer.server.Get("/", [this](const httplib::Request&, httplib::Response& res) {
           res.set_header("Access-Control-Allow-Origin", "*");
-          res.set_content(localServer.currentOutput, localServer.CONTENT_TYPE);
-          console << "Sent: " << localServer.currentOutput << '\n';
+          refresh();
+          res.set_content("{\"message\": \"Cleared and re-added data\"}", localServer.CONTENT_TYPE);
         });
+
 
         // Add a route that receives a POST request
         localServer.server.Post("/post", [&](const httplib::Request& req, httplib::Response& res) {

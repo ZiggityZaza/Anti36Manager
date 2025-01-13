@@ -1,158 +1,255 @@
-let counter = 0;
-let counterOn = true;
+/*{
+    "Anti36Local": {
+        "Origin 1": {
+            "Persona 1": {
+                0: null, (this is always null as the key is the index)
+                1: {
+                    path: "E:\\Anti36Local\\Origin 1\\Persona 1\\1_ABCD_.jpg",
+                    tags: ["_A", "_B", "_C", "_D_"]
+                },
+                2: {
+                    path: "E:\\Anti36Local\\Origin 1\\Persona 1\\2_EFGH_.jpg",
+                    tags: ["_E", "_F", "_G", "_H_"]
+                },
+                ...
+            },
+            "Persona 2": {
+                ...
+            },
+            ...
+        },
+        "Origin 2": {
+            ...
+        },
+        ...
+    }
+}*/
+let anti36Local = {};
 
 
-class HttpClient {
+// ["_A", "_B",..., "_Z", "_a", "_b",..., "_z", "_0", "_1",..., "_9"]
+let existingTags = [];
+
+
+/* ["E:\\$unsorted\\someImage.jpg","E:\\$unsorted\\someVideo.mp4",...
+"E:\\$unsorted\\someOtherImage.png","E:\\$unsorted\\someGif.mp4"] */
+let unsortedPortrayals = [];
+
+
+
+class Anti36Proxy {
+    // Communication with the server
     constructor() {
-        this.messageReceived = {};
-        this.messageToSend = {};
     }
 
-    get() {
-        fetch('http://localhost:8080')
+    set_anti36Local() {
+        fetch('http://localhost:8080/anti36local', { method: 'GET'})
         .then(response => response.json())
         .then(data => {
-            console.log('Message received:', data);
-            this.messageReceived = data;
+            anti36Local = data;
+            console.log(anti36Local);
         });
     }
 
-    post() {
-        this.messageToSend = {
-            counter: counter,
-            counterOn: counterOn
-        };
-        fetch('http://localhost:8080/post', {mode: 'no-cors', method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(this.messageToSend)});
+    set_existingTags() {
+        fetch('http://localhost:8080/existing_tags', { method: 'GET'})
+        .then(response => response.json())
+        .then(data => {
+            existingTags = data;
+            console.log(existingTags);
+        });
     }
 
-    update() {
-        this.get();
-        this.post();
-    };
+    set_unsortedPortrayals() {
+        fetch('http://localhost:8080/unsorted', { method: 'GET'})
+        .then(response => response.json())
+        .then(data => {
+            unsortedPortrayals = data;
+            console.log(unsortedPortrayals);
+        });
+    }
+
+    ask_server_to_sort_this_unsortedportrayal(pathToUnsortedPortrayal, tags, origin_p_persona) {
+        // origin_p_persona = "Origin 1/Persona 1"
+        let data = {
+            "from": pathToUnsortedPortrayal,
+            "tags": tags,
+            "to": {
+                "origin": origin_p_persona.split("/")[0],
+                "persona": origin_p_persona.split("/")[1]
+            }
+        };
+        fetch('http://localhost:8080/sort_please', {
+            mode: 'no-cors',
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
+        });
+
+        // Refresh everything
+        document.getElementsByClassName("unsorted")[0].innerHTML = "";
+        set_unsortedPortrayals();
+    }
 }
 
-let client = new HttpClient();
-client.update();
+
+let client = new Anti36Proxy();
+client.set_anti36Local();
+client.set_existingTags();
+client.set_unsortedPortrayals();
+
+
+let selectedTags = [];
 
 
 
 
+function set_tags_map_in_workspace() {
+    let workspace = document.getElementById("ws_panel");
+    workspace.innerHTML = "";
+    let tagsMap = document.createElement("div");
+    tagsMap.id = "tags_map";
+    for (let tag of existingTags) {
+        let tagElement = document.createElement("div");
+        tagElement.className = "tag";
+        tagElement.innerHTML = tag;
+        tagElement.onclick = function() {
+            if (selectedTags.includes(tag)) {
+                let index = selectedTags.indexOf(tag);
+                selectedTags.splice(index, 1);
+                tagElement.style.backgroundColor = "";
+            }
+            else {
+                selectedTags.push(tag);
+                // Put together random color
+                let color = "#";
+                for (let i = 0; i < 6; i++) {
+                    color += Math.floor(Math.random() * 16).toString(16);
+                }
+                tagElement.style.backgroundColor = color;
+            }
+            console.log(selectedTags);
+        }
+        tagsMap.appendChild(tagElement);
+    }
+    workspace.appendChild(tagsMap);
+}
 
 
-function set_unsorted_values() {
-    let unsortedList = document.getElementsByClassName("unsorted");
+function set_unsorted_panel() {
     let unsortedListHeader = document.getElementById("uns_head");
-    unsortedListHeader.innerHTML = "Fetching data...";
+    unsortedListHeader.innerHTML = unsortedPortrayals.length;
 
-    for (let i = 0; i < client.messageReceived["unsortedPortrayals"].length; i++) {
-        let path = client.messageReceived["unsortedPortrayals"][i];
-        let display = null;
-        let extension = path.split('.').pop();
-        switch (extension) {
+    for (let unsortedFPath of unsortedPortrayals) {
+        let display = null; // Unsorted portrayal to be appended
+        let isImage = null; // false = video, true = image
+        switch (unsortedFPath.split('.').pop()) {
             case "jpg": case "jpeg": case "png": case "gif": case "bmp": case "webp":
-                display = document.createElement("img");
+                isImage = true;
                 break;
             case "mp4": case "webm": case "mkv": case "avi":
-                display = document.createElement("video");
-                display.muted = true;
-                display.addEventListener("mouseover", function() {
-                    display.play();
-                });
-                display.addEventListener("mouseout", function() {
-                    display.pause();
-                });
+                isImage = false;
         }
-
-        display.setAttribute("loading", "lazy"); // Not sure if it really does anything
+        if (isImage) {
+            display = document.createElement("img");
+        }
+        else {
+            display = document.createElement("video");
+            display.muted = true;
+            display.loop = true;
+            display.addEventListener("mouseover", function() {
+                display.play();
+            });
+            display.addEventListener("mouseout", function() {
+                display.pause();
+            });
+        }
         display.className = "uns_element";
-        display.src = path;
+        display.src = unsortedFPath;
 
         // When clicked
         display.onclick = function() {
-            let workspace = document.getElementById("ws_selected");
-
-            // Place the media in the workspace
             let workspaceMedia = null;
-            switch (extension) {
-                case "jpg": case "jpeg": case "png": case "gif": case "bmp": case "webp":
-                    workspaceMedia = document.createElement("img");
-                    break;
-                case "mp4": case "webm": case "mkv": case "avi":
-                    workspaceMedia = document.createElement("video");
-                    workspaceMedia.setAttribute("controls", "controls");
+            if (isImage) {
+                workspaceMedia = document.createElement("img");
             }
-            workspaceMedia.src = path;
-            workspaceMedia.id = "ws_selected";
+            else {
+                workspaceMedia = document.createElement("video");
+                workspaceMedia.setAttribute("controls", "controls");
+            }
+            workspaceMedia.src = unsortedFPath;
+            workspaceMedia.id = "ws_below";
 
-            // Clear the workspace when clicked
-            workspace.innerHTML = workspaceMedia.outerHTML;
+            document.getElementById("ws_below").innerHTML = workspaceMedia.outerHTML;
         }
-
-        unsortedList[0].appendChild(display); // Only supports first unsorted list
+        document.getElementsByClassName("unsorted")[0].appendChild(display); // Only supports one container
     }
 
-    unsortedListHeader.innerHTML = client.messageReceived["unsortedPortrayals"].length;
+    unsortedListHeader.innerHTML = unsortedPortrayals.length;
     unsortedListHeader.innerHTML += " files in \"";
-    unsortedListHeader.innerHTML += client.messageReceived["UNSORTED_FOLDER_PATH"] += '"';
-
+    unsortedListHeader.innerHTML += "$unsorted";
+    unsortedListHeader.innerHTML += '"';
     document.body.style.cursor = "default";
 }
+
+
+
+
+function ws_control_panel_confirmed() {
+    console.log("Confirmed");
+    let personaInputField = document.getElementById("personaInputField");
+    if (personaInputField.value === "") {
+        console.log("No persona selected");
+    } else {
+        console.log("Persona selected: " + personaInputField.value);
+    }
+};
+
+
+
+
+function origin_selected(userInput) {
+    if (anti36Local["Anti36Local"][userInput] !== undefined) {
+        let personaInputField = document.getElementById("personaInputField");
+        personaInputField.value = "";
+        let personaList = document.getElementById("persona_list");
+        personaList.innerHTML = "";
+
+
+        for (let persona in anti36Local["Anti36Local"][userInput]) {
+            let option = document.createElement("option");
+            option.value = persona;
+            personaList.appendChild(option);
+        }
+    }
+}
+
+
+
+function persona_selected(userInput) {
+    console.log(userInput);
+}
+
+
+
+function set_origin_list() {
+    let dataList = document.getElementById("origin_list");
+    for (let origin in anti36Local["Anti36Local"]) {
+        let option = document.createElement("option");
+        option.value = origin;
+        dataList.appendChild(option);
+    }
+}
+
+
 
 
 // Entry point
 document.addEventListener("DOMContentLoaded", function() {
     document.body.style.cursor = "wait";
     setTimeout(function() {
-        set_unsorted_values(); // Takes care of returning the cursor to normal
+        set_unsorted_panel(); // Takes care of returning the cursor to normal
+        set_tags_map_in_workspace();
+        set_origin_list();
     }, 1000);
 });
-
-
-
-
-
-function addSomething() {
-    let path = client.messageReceived["files"][counter];
-    const container = document.getElementById("f");
-    const img = document.createElement("img");
-    img.src = path;
-    img.width = 100;
-    container.appendChild(img);
-}
-
-function refreshCounter() {
-    document.getElementById("c").innerHTML = counter;
-    if (!counterOn) {
-        document.getElementById("c").innerHTML = "";
-    }
-    client.post();
-}
-
-function decreaseCounter() {
-    if (counterOn) {
-        counter--;
-    }
-    refreshCounter();
-}
-
-function increaseCounter() {
-    if (counterOn) {
-        counter++;
-    }
-    refreshCounter();
-}
-
-function resetCounter() {
-    document.getElementById("f").innerHTML = "";
-    if (counterOn) {
-        counter = 0;
-    }
-    refreshCounter();
-}
-
-function toggleCounter() {
-    counterOn = !counterOn;
-    refreshCounter();
-}
-
-
