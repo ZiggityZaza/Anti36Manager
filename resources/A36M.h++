@@ -264,6 +264,13 @@ namespace Anti36Manager {
 
     // Other variables
     LocalServer localServer;
+    bool amIDynamicallyWorkingOnSomething = true;
+    /*
+      It is meant so the front end keeps itself in a loop in which
+      it constantly checks if the program has finished the task
+      so it can take the next step which would rely on the correct
+      information it asked for.
+    */
 
 
     // Helper methods (usually silent methods)
@@ -330,7 +337,16 @@ namespace Anti36Manager {
 
 
     void move_and_integrate_portrayal(size_t& currentLocationInUnsortedByIndex, Persona *const persona, const std::deque<char>& tags, index_t index) {
-      // Important note: Method takes care of moving file and fully integrating. Only this method should be used for this purpose.
+      /*
+        Important note! Method takes care of:...only this method should be used for this purpose
+          - Moving file from the unsorted folder to the persona folder
+          - Removing the entry from the unsortedPortrayals deque
+          - Integrating the new portrayals into the whole system
+          - Shifting down portrayals if the index is not INDEX_AUTO_INCREMENT_CODE
+
+        But syncing with front-end is the responsibility of the caller.
+        Syncing is done by simply reloading
+      */
 
       if (index == INDEX_AUTO_INCREMENT_CODE) {
         index = portrayalsByPersona[persona].size() + 1;
@@ -858,6 +874,7 @@ namespace Anti36Manager {
             ...
             }
           }*/
+          amIDynamicallyWorkingOnSomething = true;
           nlohmann::json output;
           output["Anti36Local"] = {};
           for (const Origin& origin : origins) {
@@ -872,6 +889,7 @@ namespace Anti36Manager {
               }
             }
           }
+          amIDynamicallyWorkingOnSomething = false;
           console << HEAD << "\"/anti36local\" sent: " << output.dump(1);
           res.set_content(output.dump(), localServer.CONTENT_TYPE);
         });
@@ -880,10 +898,12 @@ namespace Anti36Manager {
         localServer.server.Get("/existing_tags", [this](const httplib::Request&, httplib::Response& res) {
           res.set_header("Access-Control-Allow-Origin", "*");
           // ["_A", "_B",..., "_Z", "_a", "_b",..., "_z", "_0", "_1",..., "_9"]
+          amIDynamicallyWorkingOnSomething = true;
           nlohmann::json output;
           for (const auto& [tag, itsMeaning] : TAGS_LOOKUP) {
             output.push_back(itsMeaning);
           }
+          amIDynamicallyWorkingOnSomething = false;
           console << HEAD << "\"/existing_tags\" sent: " << output.dump();
           res.set_content(output.dump(), localServer.CONTENT_TYPE);
         });
@@ -895,8 +915,8 @@ namespace Anti36Manager {
           ["E:\\$unsorted\\someImage.jpg","E:\\$unsorted\\someVideo.mp4",...
           "E:\\$unsorted\\someOtherImage.png","E:\\$unsorted\\someGif.mp4"]
           */
+          amIDynamicallyWorkingOnSomething = true;
           std::string output = "[";
-
           for (const cslib::VirtualPath& path : unsortedPortrayalsPaths) {
             output += '"';
             /* JavaScript thinks \\ means \ so use \\\\ to make it think it's \\ */
@@ -909,17 +929,27 @@ namespace Anti36Manager {
             }
             output += "\",";
           }
-
           output.pop_back();
           output += "]";
+          amIDynamicallyWorkingOnSomething = false;
           console << HEAD << "Sent: " << output;
           res.set_content(output, localServer.CONTENT_TYPE);
         });
 
 
+        localServer.server.Get("/are_you_busy", [this](const httplib::Request&, httplib::Response& res) {
+          res.set_header("Access-Control-Allow-Origin", "*");
+          std::string amIDynamicallyWorkingOnSomethingAsStr = amIDynamicallyWorkingOnSomething ? "true" : "false";
+          console << HEAD << "Sent: " << amIDynamicallyWorkingOnSomethingAsStr;
+          res.set_content(amIDynamicallyWorkingOnSomethingAsStr, localServer.CONTENT_TYPE);
+        });
+
+
         localServer.server.Get("/", [this](const httplib::Request&, httplib::Response& res) {
           res.set_header("Access-Control-Allow-Origin", "*");
+          amIDynamicallyWorkingOnSomething = true;
           refresh();
+          amIDynamicallyWorkingOnSomething = false;
           res.set_content("{\"message\": \"Cleared and re-added data\"}", localServer.CONTENT_TYPE);
         });
 
@@ -932,7 +962,9 @@ namespace Anti36Manager {
           console << "Received: " << localServer.lastInput << '\n';
         });
 
+
         // Start the local server
+        amIDynamicallyWorkingOnSomething = false;
         localServer.start();
       }
   };
