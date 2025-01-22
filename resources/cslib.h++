@@ -70,6 +70,30 @@ namespace cslib { // Jack of all trades (Helper functions and classes)
     }
 
 
+    static void replace_str_in_strref(std::string& stringInQuestion, const std::string replaceWhat, const std::string replaceWith) {
+      /*
+        This function takes a string and replaces all occurrences of a substring with another substring.
+        The string is passed by reference and the changes are made directly to the string.
+      */
+
+      std::size_t position = 0;
+      while ((position = stringInQuestion.find(replaceWhat, position)) != std::string::npos) { // As long as there is something to replace...
+        stringInQuestion.replace(position, replaceWhat.length(), replaceWith); // Replace it
+        position += replaceWith.length(); // Move the position to the end of the replacement
+      }
+    }
+    static std::string replace_str_in_str(const std::string &stringInQuestion, const std::string replaceWhat, const std::string replaceWith) {
+      /*
+        This function takes a string and replaces all occurrences of a substring with another substring.
+        The original string is not changed and a new string is returned.
+      */
+
+      std::string result = stringInQuestion;
+      replace_str_in_strref(result, replaceWhat, replaceWith);
+      return result;
+    }
+
+
     static constexpr uint8_t MAX_CONSOLE_WIDTH = 120; // for 1080p screens
     static std::string form_2d_chart(std::deque<std::string> strings) {
       /*

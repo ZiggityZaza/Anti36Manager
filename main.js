@@ -41,7 +41,7 @@ let filteredPortrayals = [];
 
 
 // "true" or "false"
-let isBusy = new Boolean;
+let serverIsBusy = new Boolean;
 
 
 
@@ -77,12 +77,21 @@ class Anti36Proxy {
         });
     }
 
-    ask_server_if_its_busy() {
+    set_filteredPortrayals() {
+        fetch('http://localhost:8080/current_portrayal_remix', { method: 'GET'})
+        .then(response => response.json())
+        .then(data => {
+            filteredPortrayals = data;
+            console.log(filteredPortrayals);
+        });
+    }
+
+    set_IsBusy() {
         fetch('http://localhost:8080/are_you_busy', { method: 'GET'})
         .then(response => response.json())
         .then(data => {
-            isBusy = data;
-            console.log(isBusy);
+            serverIsBusy = data;
+            console.log(serverIsBusy);
         });
     }
 
@@ -112,6 +121,38 @@ class Anti36Proxy {
         // Refresh everything
         document.getElementsByClassName("unsorted")[0].innerHTML = "";
         this.set_unsortedPortrayals();
+    }
+
+    ask_server_to_make_portrayal_remix() {
+        /*
+            {
+              "filterByPersonas": {
+                "Origin 1": ["Persona 1", "Persona 2",...],
+                "Origin 2": ["Persona 1", "Persona 2",...],
+                ...
+            },
+              "filterByTags": ["_A", "_B", "_C", "_D",...],
+              "filterByType": "Image" (or "Video" for vids, "" for both)
+            }
+        */
+
+        console.log("Asking server to make a remix");
+
+        let data = {
+            "filterByPersonas": {
+                "League": ["Akali", "Ahri"],
+                "IRL": ["Common"]
+            },
+            "filterByTags": ["_A", "_B", "_C", "_D"],
+            "filterByType": ""
+        };
+
+        fetch('http://localhost:8080/remix_please', {
+            mode: 'no-cors',
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
+        });
     }
 }
 

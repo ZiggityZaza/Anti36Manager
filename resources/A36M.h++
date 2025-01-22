@@ -849,7 +849,7 @@ namespace Anti36Manager {
         The function is used for the front-end to get the portrayals it needs.
       */
 
-      console << SUBLINE << "Putting together a collection of portrayals based on filterByXY variables";
+      console << "Putting together a collection of portrayals based on filterByXY variables";
 
       filteredPortrayals.clear();
 
@@ -860,43 +860,13 @@ namespace Anti36Manager {
             if (filterByTags.empty() or cslib::do_these_deques_have_something_in_similar(portrayal->tags, filterByTags)) {
               if (filterByType == MediaType::BOTH or filterByType == MediaType::NONE or filterByType == EXTENSION_TO_MEDIA.at(portrayal->where->extension())) {
                 filteredPortrayals.push_back(portrayal);
-                console << SUBSUBLINE << "Added " << portrayal->where->filename();
+                console << SUBLINE << "Added " << portrayal->where->filename();
               }
             }
 
           }
         }
       }
-    }
-
-
-
-    std::string turn_portrayal_remix_to_strArray() {
-      /*
-        This function is used to turn the portrayals deque into an useable JSON object
-        so it can be sent to the front-end.
-
-        "[\"E:\\Anti36Local\\Origin 1\\Persona 1\\1_ABCD_.jpg\",...]""
-      */
-
-      console << SUBLINE << "Prasing the filteredPortrayals deque to an array as string";
-
-      std::string output = "[";
-      for (Portrayal* portrayal : filteredPortrayals) {
-        output += '"';
-        for (char c : portrayal->where->path) { // Quick fix
-          if (c == '\\') {
-            output += "\\\\";
-          } else {
-            output += c;
-          }
-        }
-        output += "\",";
-      }
-      output.pop_back();
-      output += "]";
-
-      return output;
     }
 
 
@@ -927,7 +897,6 @@ namespace Anti36Manager {
 
 
         localServer.server.Get("/anti36local", [this](const httplib::Request&, httplib::Response& res) {
-          res.set_header("Access-Control-Allow-Origin", "*");
           /*{
           "Anti36Local": {
             "Origin 1": {
@@ -954,6 +923,7 @@ namespace Anti36Manager {
             ...
             }
           }*/
+          res.set_header("Access-Control-Allow-Origin", "*");
           amIDynamicallyWorkingOnSomething = true;
           nlohmann::json output;
           output["Anti36Local"] = {};
@@ -970,49 +940,44 @@ namespace Anti36Manager {
             }
           }
           amIDynamicallyWorkingOnSomething = false;
-          console << HEAD << "\"/anti36local\" sent: " << output.dump(1);
+          console << HEAD << "\"/anti36local\" as GET";
           res.set_content(output.dump(), localServer.CONTENT_TYPE);
         });
 
 
         localServer.server.Get("/existing_tags", [this](const httplib::Request&, httplib::Response& res) {
-          res.set_header("Access-Control-Allow-Origin", "*");
           // ["_A", "_B",..., "_Z", "_a", "_b",..., "_z", "_0", "_1",..., "_9"]
+          res.set_header("Access-Control-Allow-Origin", "*");
           amIDynamicallyWorkingOnSomething = true;
           nlohmann::json output;
           for (const auto& [tag, itsMeaning] : TAGS_LOOKUP) {
             output.push_back(itsMeaning);
           }
           amIDynamicallyWorkingOnSomething = false;
-          console << HEAD << "\"/existing_tags\" sent: " << output.dump();
+          console << HEAD << "\"/existing_tags\" as GET";
           res.set_content(output.dump(), localServer.CONTENT_TYPE);
         });
 
 
         localServer.server.Get("/unsorted", [this](const httplib::Request&, httplib::Response& res) {
-          res.set_header("Access-Control-Allow-Origin", "*");
           /*
           ["E:\\$unsorted\\someImage.jpg","E:\\$unsorted\\someVideo.mp4",...
           "E:\\$unsorted\\someOtherImage.png","E:\\$unsorted\\someGif.mp4"]
           */
+          res.set_header("Access-Control-Allow-Origin", "*");
           amIDynamicallyWorkingOnSomething = true;
           std::string output = "[";
           for (const cslib::VirtualPath& path : unsortedPortrayalsPaths) {
             output += '"';
-            /* JavaScript thinks \\ means \ so use \\\\ to make it think it's \\ */
-            for (char c : path.path) { // Quick fix
-              if (c == '\\') {
-                output += "\\\\";
-              } else {
-                output += c;
-              }
-            }
+            output += cslib::replace_str_in_str(path.path, "\\", "\\\\"); // Workaround for payload
             output += "\",";
           }
-          output.pop_back();
+          if (!unsortedPortrayalsPaths.empty()) {
+            output.pop_back();
+          }
           output += "]";
           amIDynamicallyWorkingOnSomething = false;
-          console << HEAD << "Sent: " << output;
+          console << HEAD << "\"/unsorted\" as GET";
           res.set_content(output, localServer.CONTENT_TYPE);
         });
 
@@ -1050,6 +1015,7 @@ namespace Anti36Manager {
             }
           */
           res.set_header("Access-Control-Allow-Origin", "*");
+          console << HEAD << "\"/sort_please\" as POST";
           amIDynamicallyWorkingOnSomething = true;
           nlohmann::json input = nlohmann::json::parse(req.body);
           Persona* persona = persona_exists(input["persona"], origin_exists(input["origin"]));
@@ -1064,34 +1030,35 @@ namespace Anti36Manager {
               break;
             }
           }
-          console << SUBLINE << "Current location in unsorted by index: " << currentLocationInUnsortedByIndex;
-          console << SUBLINE << "Persona: " << persona->name;
-          console << SUBLINE << "Tags: ";
-          for (char tag : tags) {
-            console << SUBSUBLINE << TAGS_LOOKUP.at(tag);
-          }
-          
           move_and_integrate_portrayal(currentLocationInUnsortedByIndex, persona, tags, INDEX_AUTO_INCREMENT_CODE);
           amIDynamicallyWorkingOnSomething = false;
           res.set_content("{\"message\": \"Moved and integrated the portrayal\"}", localServer.CONTENT_TYPE);
         });
 
 
-        localServer.server.Get("/current_get_portrayal_remix", [this](const httplib::Request&, httplib::Response& res) {
+        localServer.server.Get("/current_portrayal_remix", [this](const httplib::Request&, httplib::Response& res) {
           /*
             ["E:\\Anti36Local\\Origin 1\\Persona 1\\1_ABCD_.jpg","E:\\Anti36Local\\Origin 1\\Persona 1\\2_EFGH_.jpg",...]
           */
           res.set_header("Access-Control-Allow-Origin", "*");
           amIDynamicallyWorkingOnSomething = true;
-          put_together_portrayal_remix_by_filter();
-          std::string output = turn_portrayal_remix_to_strArray();
+          std::string output = "[";
+          for (Portrayal* portrayal : filteredPortrayals) {
+            output += '"';
+            output += portrayal->where->path;
+            output += "\",";
+          }
+          if (!filteredPortrayals.empty()) {
+            output.pop_back();
+          }
+          output += "]";
           amIDynamicallyWorkingOnSomething = false;
-          console << HEAD << "Sent: " << output;
+          console << HEAD << "\"/current_portrayal_remix\" as GET";
           res.set_content(output, localServer.CONTENT_TYPE);
         });
 
 
-        localServer.server.Post("/make_a_portrayal_remix_out_of_this", [this](const httplib::Request& req, httplib::Response& res) {
+        localServer.server.Post("/remix_please", [this](const httplib::Request& req, httplib::Response& res) {
           /*
             {
               "filterByPersonas": {
@@ -1117,7 +1084,7 @@ namespace Anti36Manager {
             }
           }
 
-          for (const std::string& filterByTag : input["filterByTags"]) {
+          for (const std::string& filterByTag : input["filterByTags"]) { // Reverse lookup
             for (const auto& [tag, itsMeaning] : TAGS_LOOKUP) {
               if (itsMeaning == filterByTag) {
                 filterByTags.push_back(tag);
@@ -1127,15 +1094,6 @@ namespace Anti36Manager {
           }
 
           filterByType = input["filterByType"] == "Image" ? IMAGE : input["filterByType"] == "Video" ? VIDEO : NONE;
-        });
-
-
-        // Add a route that receives a POST request
-        localServer.server.Post("/post", [&](const httplib::Request& req, httplib::Response& res) {
-          res.set_header("Access-Control-Allow-Origin", "*");
-          res.set_content(req.body, localServer.CONTENT_TYPE);
-          localServer.lastInput = req.body;
-          console << "Received: " << localServer.lastInput << '\n';
         });
 
 
