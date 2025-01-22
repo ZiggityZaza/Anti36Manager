@@ -36,6 +36,14 @@ let existingTags = [];
 let unsortedPortrayals = [];
 
 
+// ["E:\\Origina 1\\Persona 1\\1_ABCD_.jpg", "E:\\Origina 1\\Persona 1\\2_EFGH_.jpg",...]
+let filteredPortrayals = [];
+
+
+// "true" or "false"
+let isBusy = new Boolean;
+
+
 
 class Anti36Proxy {
     // Communication with the server
@@ -69,15 +77,30 @@ class Anti36Proxy {
         });
     }
 
-    ask_server_to_sort_this_unsortedportrayal(pathToUnsortedPortrayal, tags, origin_p_persona) {
-        // origin_p_persona = "Origin 1/Persona 1"
-        let data = {
-            "from": pathToUnsortedPortrayal,
-            "tags": tags,
-            "to": {
-                "origin": origin_p_persona.split("/")[0],
-                "persona": origin_p_persona.split("/")[1]
+    ask_server_if_its_busy() {
+        fetch('http://localhost:8080/are_you_busy', { method: 'GET'})
+        .then(response => response.json())
+        .then(data => {
+            isBusy = data;
+            console.log(isBusy);
+        });
+    }
+
+    ask_server_to_sort_this_unsortedportrayal(pathToUnsortedPortrayal, tags, origin, persona) {
+        /*
+            {
+                "currentLocationInUnsorted": "E:\\$unsorted\\someImage.jpg",
+                "index": INDEX_AUTO_INCREMENT_CODE,
+                "origin": "Origin 1",
+                "persona": "Persona 1",
+                "tags": ["_A", "_B", "_C", "_D"]
             }
+        */
+        let data = {
+            "currentLocationInUnsorted": pathToUnsortedPortrayal,
+            "origin": origin,
+            "persona": persona,
+            "tags": tags
         };
         fetch('http://localhost:8080/sort_please', {
             mode: 'no-cors',
@@ -88,7 +111,7 @@ class Anti36Proxy {
 
         // Refresh everything
         document.getElementsByClassName("unsorted")[0].innerHTML = "";
-        set_unsortedPortrayals();
+        this.set_unsortedPortrayals();
     }
 }
 

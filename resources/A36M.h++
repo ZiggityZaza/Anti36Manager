@@ -262,6 +262,13 @@ namespace Anti36Manager {
     */
 
 
+    // Filter variables
+    std::unordered_map<Origin*, std::deque<Persona*>> filterByPersona;
+    std::deque<char> filterByTags;
+    MediaType filterByType;
+    std::deque<Portrayal*> filteredPortrayals;
+
+
     // Other variables
     LocalServer localServer;
     bool amIDynamicallyWorkingOnSomething = true;
@@ -332,62 +339,6 @@ namespace Anti36Manager {
       } else {
         portrayalInQuestion->where->pretend_to_move_to(newPath);
       }
-    }
-
-
-
-    void move_and_integrate_portrayal(size_t& currentLocationInUnsortedByIndex, Persona *const persona, const std::deque<char>& tags, index_t index) {
-      /*
-        Important note! Method takes care of:...only this method should be used for this purpose
-          - Moving file from the unsorted folder to the persona folder
-          - Removing the entry from the unsortedPortrayals deque
-          - Integrating the new portrayals into the whole system
-          - Shifting down portrayals if the index is not INDEX_AUTO_INCREMENT_CODE
-
-        But syncing with front-end is the responsibility of the caller.
-        Syncing is done by simply reloading
-      */
-
-      if (index == INDEX_AUTO_INCREMENT_CODE) {
-        index = portrayalsByPersona[persona].size() + 1;
-      } else {
-        for (Portrayal* portrayal : portrayalsByPersona[persona]) {
-          if (portrayal->index >= index) {
-            portrayal->index++;
-          }
-        }
-      }
-
-      std::string newPath = ANTI36_FOLDER;
-      newPath += '\\';
-      newPath += persona->origin->name;
-      newPath += '\\';
-      newPath += persona->name;
-      newPath += '\\';
-      newPath += std::to_string(index);
-      newPath += '_';
-      for (char tag : tags) {
-        newPath += tag;
-      }
-      newPath += '_';
-      newPath += unsortedPortrayalsPaths[currentLocationInUnsortedByIndex].extension();
-
-      if (!DEBUGGING) {
-        unsortedPortrayalsPaths[currentLocationInUnsortedByIndex].move_to(newPath);
-      } else {
-        unsortedPortrayalsPaths[currentLocationInUnsortedByIndex].pretend_to_move_to(newPath);
-      }
-
-      files.push_back(unsortedPortrayalsPaths[currentLocationInUnsortedByIndex]);
-      unsortedPortrayalsPaths.erase(unsortedPortrayalsPaths.begin() + currentLocationInUnsortedByIndex);
-
-      portrayals.push_back({index, persona, tags, &files.back()});
-      portrayalsByPersona[persona].push_back(&portrayals.back());
-      portrayalsByOrigin[origin_exists(persona->origin->name)].push_back(&portrayals.back());
-      for (char tag : tags) {
-        portrayalsByTag[tag].push_back(&portrayals.back());
-      }
-      portrayalsByType[EXTENSION_TO_MEDIA.at(files.back().extension())].push_back(&portrayals.back());
     }
 
 
@@ -821,6 +772,117 @@ namespace Anti36Manager {
 
 
 
+    void move_and_integrate_portrayal(size_t& currentLocationInUnsortedByIndex, Persona *const persona, const std::deque<char>& tags, index_t index) {
+      /*
+        Important note! Method takes care of:...only this method should be used for this purpose
+          - Moving file from the unsorted folder to the persona folder
+          - Removing the entry from the unsortedPortrayals deque
+          - Integrating the new portrayals into the whole system
+          - Shifting down portrayals if the index is not INDEX_AUTO_INCREMENT_CODE
+
+        But syncing with front-end is the responsibility of the caller.
+        Syncing is done by simply reloading
+      */
+
+      if (index == INDEX_AUTO_INCREMENT_CODE) {
+        index = portrayalsByPersona[persona].size() + 1;
+      } else {
+        for (Portrayal* portrayal : portrayalsByPersona[persona]) {
+          if (portrayal->index >= index) {
+            portrayal->index++;
+          }
+        }
+      }
+
+      std::string newPath = ANTI36_FOLDER;
+      newPath += '\\';
+      newPath += persona->origin->name;
+      newPath += '\\';
+      newPath += persona->name;
+      newPath += '\\';
+      newPath += std::to_string(index);
+      newPath += '_';
+      for (char tag : tags) {
+        newPath += tag;
+      }
+      newPath += '_';
+      newPath += unsortedPortrayalsPaths[currentLocationInUnsortedByIndex].extension();
+
+      if (!DEBUGGING) {
+        unsortedPortrayalsPaths[currentLocationInUnsortedByIndex].move_to(newPath);
+      } else {
+        unsortedPortrayalsPaths[currentLocationInUnsortedByIndex].pretend_to_move_to(newPath);
+      }
+
+      files.push_back(unsortedPortrayalsPaths[currentLocationInUnsortedByIndex]);
+      unsortedPortrayalsPaths.erase(unsortedPortrayalsPaths.begin() + currentLocationInUnsortedByIndex);
+
+      portrayals.push_back({index, persona, tags, &files.back()});
+      portrayalsByPersona[persona].push_back(&portrayals.back());
+      portrayalsByOrigin[origin_exists(persona->origin->name)].push_back(&portrayals.back());
+      for (char tag : tags) {
+        portrayalsByTag[tag].push_back(&portrayals.back());
+      }
+      portrayalsByType[EXTENSION_TO_MEDIA.at(files.back().extension())].push_back(&portrayals.back());
+
+      console << SUBSUBLINE << "Moved and integrated " << files.back().filename();
+    }
+
+
+
+    void put_together_portrayal_remix_by_filter() {
+      /*
+        This function is used to filter the portrayals by the given parameters.
+        The portrayals are then put together in a deque and returned.
+
+        The function is used for the front-end to get the portrayals it needs.
+      */
+
+      for (const auto& [origin, personas] : filterByPersona) {
+        for (Persona* persona : personas) {
+          for (Portrayal* portrayal : portrayalsByPersona[persona]) {
+ 
+            if (filterByTags.empty() or cslib::do_these_deques_have_something_in_similar(portrayal->tags, filterByTags)) {
+              if (filterByType == MediaType::BOTH or filterByType == MediaType::NONE or filterByType == EXTENSION_TO_MEDIA.at(portrayal->where->extension())) {
+                filteredPortrayals.push_back(portrayal);
+              }
+            }
+
+          }
+        }
+      }
+    }
+
+
+
+    std::string turn_portrayal_remix_to_strArray() {
+      /*
+        This function is used to turn the portrayals deque into an useable JSON object
+        so it can be sent to the front-end.
+
+        "[\"E:\\Anti36Local\\Origin 1\\Persona 1\\1_ABCD_.jpg\",...]""
+      */
+
+      std::string output = "[";
+      for (Portrayal* portrayal : filteredPortrayals) {
+        output += '"';
+        for (char c : portrayal->where->path) { // Quick fix
+          if (c == '\\') {
+            output += "\\\\";
+          } else {
+            output += c;
+          }
+        }
+        output += "\",";
+      }
+      output.pop_back();
+      output += "]";
+
+      return output;
+    }
+
+
+
     public:
       explicit Main() {
 
@@ -938,8 +1000,14 @@ namespace Anti36Manager {
 
 
         localServer.server.Get("/are_you_busy", [this](const httplib::Request&, httplib::Response& res) {
+          /*
+            {
+              "amIDynamicallyWorkingOnSomething": true
+            }
+          */
           res.set_header("Access-Control-Allow-Origin", "*");
-          std::string amIDynamicallyWorkingOnSomethingAsStr = amIDynamicallyWorkingOnSomething ? "true" : "false";
+          std::string amIDynamicallyWorkingOnSomethingAsStr = "{\"amIDynamicallyWorkingOnSomething\": ";
+          amIDynamicallyWorkingOnSomethingAsStr += amIDynamicallyWorkingOnSomething ? "true}" : "false}";
           console << HEAD << "Sent: " << amIDynamicallyWorkingOnSomethingAsStr;
           res.set_content(amIDynamicallyWorkingOnSomethingAsStr, localServer.CONTENT_TYPE);
         });
@@ -951,6 +1019,96 @@ namespace Anti36Manager {
           refresh();
           amIDynamicallyWorkingOnSomething = false;
           res.set_content("{\"message\": \"Cleared and re-added data\"}", localServer.CONTENT_TYPE);
+        });
+
+
+        localServer.server.Post("/sort_please", [this](const httplib::Request& req, httplib::Response& res) {
+          /*
+            {
+              "currentLocationInUnsorted": "E:\\$unsorted\\someImage.jpg",
+              "origin": "Origin 1",
+              "persona": "Persona 1",
+              "tags": ["_A", "_B", "_C", "_D"]
+            }
+          */
+          res.set_header("Access-Control-Allow-Origin", "*");
+          amIDynamicallyWorkingOnSomething = true;
+          nlohmann::json input = nlohmann::json::parse(req.body);
+          Persona* persona = persona_exists(input["persona"], origin_exists(input["origin"]));
+          std::deque<char> tags;
+          for (const std::string& tag : input["tags"]) {
+            tags.push_back(tag[0]);
+          }
+          size_t currentLocationInUnsortedByIndex = 0;
+          for (size_t i = 0; i < unsortedPortrayalsPaths.size(); ++i) {
+            if (unsortedPortrayalsPaths[i].path == input["currentLocationInUnsorted"].get<std::string>()) {
+              currentLocationInUnsortedByIndex = i;
+              break;
+            }
+          }
+          console << SUBLINE << "Current location in unsorted by index: " << currentLocationInUnsortedByIndex;
+          console << SUBLINE << "Persona: " << persona->name;
+          console << SUBLINE << "Tags: ";
+          for (char tag : tags) {
+            console << SUBSUBLINE << TAGS_LOOKUP.at(tag);
+          }
+          
+          move_and_integrate_portrayal(currentLocationInUnsortedByIndex, persona, tags, INDEX_AUTO_INCREMENT_CODE);
+          amIDynamicallyWorkingOnSomething = false;
+          res.set_content("{\"message\": \"Moved and integrated the portrayal\"}", localServer.CONTENT_TYPE);
+        });
+
+
+        localServer.server.Get("/current_get_portrayal_remix", [this](const httplib::Request&, httplib::Response& res) {
+          /*
+            ["E:\\Anti36Local\\Origin 1\\Persona 1\\1_ABCD_.jpg","E:\\Anti36Local\\Origin 1\\Persona 1\\2_EFGH_.jpg",...]
+          */
+          res.set_header("Access-Control-Allow-Origin", "*");
+          amIDynamicallyWorkingOnSomething = true;
+          put_together_portrayal_remix_by_filter();
+          std::string output = turn_portrayal_remix_to_strArray();
+          amIDynamicallyWorkingOnSomething = false;
+          console << HEAD << "Sent: " << output;
+          res.set_content(output, localServer.CONTENT_TYPE);
+        });
+
+
+        localServer.server.Post("/make_a_portrayal_remix_out_of_this", [this](const httplib::Request& req, httplib::Response& res) {
+          /*
+            {
+              "filterByPersonas": {
+                "Origin 1": ["Persona 1", "Persona 2",...],
+                "Origin 2": ["Persona 1", "Persona 2",...],
+                ...
+              },
+              "filterByTags": ["_A", "_B", "_C", "_D",...],
+              "filterByType": "Image" (or "Video" for vids, "" for both)
+            }
+          */
+          res.set_header("Access-Control-Allow-Origin", "*");
+          amIDynamicallyWorkingOnSomething = true;
+          nlohmann::json input = nlohmann::json::parse(req.body);
+
+          filterByPersona.clear();
+          filterByTags.clear();
+          filteredPortrayals.clear();
+
+          for (const auto& [origin, personas] : input["filterByPersonas"].items()) {
+            for (const std::string& persona : personas) {
+              filterByPersona[origin_exists(origin)].push_back(persona_exists(persona, origin_exists(origin)));
+            }
+          }
+
+          for (const std::string& filterByTag : input["filterByTags"]) {
+            for (const auto& [tag, itsMeaning] : TAGS_LOOKUP) {
+              if (itsMeaning == filterByTag) {
+                filterByTags.push_back(tag);
+                break;
+              }
+            }
+          }
+
+          filterByType = input["filterByType"] == "Image" ? IMAGE : input["filterByType"] == "Video" ? VIDEO : NONE;
         });
 
 

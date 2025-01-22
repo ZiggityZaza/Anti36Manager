@@ -170,6 +170,16 @@ namespace cslib { // Jack of all trades (Helper functions and classes)
     return std::find(dequeInQuestion.begin(), dequeInQuestion.end(), elementInQuestion) != dequeInQuestion.end();
   }
 
+  template <typename T>
+  static bool do_these_deques_have_something_in_similar(const std::deque<T>& deque1, const std::deque<T>& deque2) {
+    for (const T& element : deque1) {
+      if (does_this_exist_in_deque(deque2, element)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
 
   class DualOutput {
     /*
