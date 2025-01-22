@@ -741,14 +741,17 @@ namespace Anti36Manager {
       personas.clear();
       portrayals.clear();
       unsortedPortrayalsPaths.clear();
+      console << SUBLINE << "Cleared all the pillar containers";
 
       portrayalsByOrigin.clear();
       portrayalsByPersona.clear();
       portrayalsByTag.clear();
       portrayalsByType.clear();
       personasByOrigin.clear();
+      console << SUBLINE << "Cleared all the easy-access containers";
 
       // Setup
+      console << NEXT;
       read_ANTI36_FOLDER();
       console << NEXT;
       read_UNSORTED_FOLDER();
@@ -766,8 +769,7 @@ namespace Anti36Manager {
       full_duplicate_index_fix();
       console << NEXT;
       full_index_gaps_fix();
-      console << NEXT;
-      console << "Refreshed the program";
+      console << NEXT << "Refreshed the program";
     }
 
 
@@ -784,14 +786,18 @@ namespace Anti36Manager {
         Syncing is done by simply reloading
       */
 
+      console << SUBLINE << "Moving and integrating " << unsortedPortrayalsPaths[currentLocationInUnsortedByIndex].filename();
+
       if (index == INDEX_AUTO_INCREMENT_CODE) {
         index = portrayalsByPersona[persona].size() + 1;
+        console << "Index is auto-incremented to " << index;
       } else {
         for (Portrayal* portrayal : portrayalsByPersona[persona]) {
           if (portrayal->index >= index) {
             portrayal->index++;
           }
         }
+        console << "Index is manually set to " << index;
       }
 
       std::string newPath = ANTI36_FOLDER;
@@ -807,15 +813,20 @@ namespace Anti36Manager {
       }
       newPath += '_';
       newPath += unsortedPortrayalsPaths[currentLocationInUnsortedByIndex].extension();
+      console << SUBSUBLINE << "New path: " << newPath;
+
 
       if (!DEBUGGING) {
         unsortedPortrayalsPaths[currentLocationInUnsortedByIndex].move_to(newPath);
+        console << SUBSUBLINE << "Moved to " << newPath;
       } else {
         unsortedPortrayalsPaths[currentLocationInUnsortedByIndex].pretend_to_move_to(newPath);
+        console << SUBSUBLINE << "Pretended to move to " << newPath;
       }
 
       files.push_back(unsortedPortrayalsPaths[currentLocationInUnsortedByIndex]);
       unsortedPortrayalsPaths.erase(unsortedPortrayalsPaths.begin() + currentLocationInUnsortedByIndex);
+      console << SUBSUBLINE << "Moved entry from unsortedPortrayalsPaths[" << currentLocationInUnsortedByIndex << "] to files";
 
       portrayals.push_back({index, persona, tags, &files.back()});
       portrayalsByPersona[persona].push_back(&portrayals.back());
@@ -825,7 +836,7 @@ namespace Anti36Manager {
       }
       portrayalsByType[EXTENSION_TO_MEDIA.at(files.back().extension())].push_back(&portrayals.back());
 
-      console << SUBSUBLINE << "Moved and integrated " << files.back().filename();
+      console << SUBSUBLINE << "Moved and integrated " << files.back().filename() << " as " << &portrayals.back();
     }
 
 
@@ -838,6 +849,10 @@ namespace Anti36Manager {
         The function is used for the front-end to get the portrayals it needs.
       */
 
+      console << SUBLINE << "Putting together a collection of portrayals based on filterByXY variables";
+
+      filteredPortrayals.clear();
+
       for (const auto& [origin, personas] : filterByPersona) {
         for (Persona* persona : personas) {
           for (Portrayal* portrayal : portrayalsByPersona[persona]) {
@@ -845,6 +860,7 @@ namespace Anti36Manager {
             if (filterByTags.empty() or cslib::do_these_deques_have_something_in_similar(portrayal->tags, filterByTags)) {
               if (filterByType == MediaType::BOTH or filterByType == MediaType::NONE or filterByType == EXTENSION_TO_MEDIA.at(portrayal->where->extension())) {
                 filteredPortrayals.push_back(portrayal);
+                console << SUBSUBLINE << "Added " << portrayal->where->filename();
               }
             }
 
@@ -862,6 +878,8 @@ namespace Anti36Manager {
 
         "[\"E:\\Anti36Local\\Origin 1\\Persona 1\\1_ABCD_.jpg\",...]""
       */
+
+      console << SUBLINE << "Prasing the filteredPortrayals deque to an array as string";
 
       std::string output = "[";
       for (Portrayal* portrayal : filteredPortrayals) {
