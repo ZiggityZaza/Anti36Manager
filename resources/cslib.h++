@@ -195,6 +195,11 @@ namespace cslib { // Jack of all trades (Helper functions and classes)
   }
 
   template <typename T>
+  static void erase_this_from_deque(std::deque<T>& dequeInQuestion, const T& elementInQuestion) {
+    dequeInQuestion.erase(std::remove(dequeInQuestion.begin(), dequeInQuestion.end(), elementInQuestion), dequeInQuestion.end());
+  }
+
+  template <typename T>
   static bool do_these_deques_have_something_in_similar(const std::deque<T>& deque1, const std::deque<T>& deque2) {
     for (const T& element : deque1) {
       if (does_this_exist_in_deque(deque2, element)) {

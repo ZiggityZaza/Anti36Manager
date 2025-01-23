@@ -253,12 +253,10 @@ namespace Anti36Manager {
     std::unordered_map<char, std::deque<Portrayal*>> portrayalsByTag;
     std::unordered_map<MediaType, std::deque<Portrayal*>> portrayalsByType;
     /*
-      Important note: The order of portrayals in easy-access containers typically
-      follows the first-to-last index, as std::filesystem::recursive_directory_iterator
-      traverses directories surface-first alphabetically. However, some methods may
-      disrupt this order by swapping indexes.
-
-      Refreshing the program resolves this by reloading and re-adding content.
+      Note: The order of the portrayals in the deques aren't the same
+      as it is in the windows persona folder as
+      std::filesystem::recursive_directory_iterator() sorts numbers
+      differently than the windows explorer. f.e. "1_", "10_", "2_"
     */
 
 
@@ -273,10 +271,9 @@ namespace Anti36Manager {
     LocalServer localServer;
     bool amIDynamicallyWorkingOnSomething = true;
     /*
-      It is meant so the front end keeps itself in a loop in which
-      it constantly checks if the program has finished the task
-      so it can take the next step which would rely on the correct
-      information it asked for.
+      So the front-end keeps itself in a loop in which it constantly
+      checks if the program has finished the task so it can take the
+      next step which would rely on the correct information it asked for.
     */
 
 
@@ -846,24 +843,36 @@ namespace Anti36Manager {
         This function is used to filter the portrayals by the given parameters.
         The portrayals are then put together in a deque and returned.
 
-        The function is used for the front-end to get the portrayals it needs.
+        filterByType is exclusive. If it is set to MediaType::IMAGE, only images
+        will be returned and vice versa.
       */
 
       console << "Putting together a collection of portrayals based on filterByXY variables";
 
+
       filteredPortrayals.clear();
 
-      for (const auto& [origin, personas] : filterByPersona) {
-        for (Persona* persona : personas) {
-          for (Portrayal* portrayal : portrayalsByPersona[persona]) {
- 
-            if (filterByTags.empty() or cslib::do_these_deques_have_something_in_similar(portrayal->tags, filterByTags)) {
-              if (filterByType == MediaType::BOTH or filterByType == MediaType::NONE or filterByType == EXTENSION_TO_MEDIA.at(portrayal->where->extension())) {
-                filteredPortrayals.push_back(portrayal);
-                console << SUBLINE << "Added " << portrayal->where->filename();
-              }
-            }
+      for (Portrayal& portrayal : portrayals) {
+        if (cslib::do_these_deques_have_something_in_similar(filterByTags, portrayal.tags)) {
+          filteredPortrayals.push_back(&portrayal);
+          continue;
+        }
 
+        if (!filterByPersona.empty()) {
+          for (const auto& [origin, itsPersonas] : filterByPersona) {
+            if (cslib::does_this_exist_in_deque(itsPersonas, persona_exists(portrayal.persona->name, origin))) {
+              filteredPortrayals.push_back(&portrayal);
+              break;
+            }
+          }
+        }
+      }
+
+      // Remove the portrayals that don't match the filterByType
+      if (filterByType != MediaType::NONE or filterByType != MediaType::BOTH) {
+        for (Portrayal* portrayal : filteredPortrayals) {
+          if (EXTENSION_TO_MEDIA.at(portrayal->where->extension()) != filterByType) {
+            cslib::erase_this_from_deque(filteredPortrayals, portrayal);
           }
         }
       }
@@ -896,6 +905,17 @@ namespace Anti36Manager {
         console << NEXT;
 
 
+
+        localServer.server.Get("/", [this](const httplib::Request&, httplib::Response& res) {
+          res.set_header("Access-Control-Allow-Origin", "*");
+          amIDynamicallyWorkingOnSomething = true;
+          refresh();
+          amIDynamicallyWorkingOnSomething = false;
+          res.set_content("{\"message\": \"Cleared and re-added data\"}", localServer.CONTENT_TYPE);
+        });
+
+
+
         localServer.server.Get("/anti36local", [this](const httplib::Request&, httplib::Response& res) {
           /*{
           "Anti36Local": {
@@ -923,8 +943,11 @@ namespace Anti36Manager {
             ...
             }
           }*/
+
           res.set_header("Access-Control-Allow-Origin", "*");
           amIDynamicallyWorkingOnSomething = true;
+
+
           nlohmann::json output;
           output["Anti36Local"] = {};
           for (const Origin& origin : origins) {
@@ -939,20 +962,28 @@ namespace Anti36Manager {
               }
             }
           }
+
+
           amIDynamicallyWorkingOnSomething = false;
           console << HEAD << "\"/anti36local\" as GET";
           res.set_content(output.dump(), localServer.CONTENT_TYPE);
         });
 
 
+
         localServer.server.Get("/existing_tags", [this](const httplib::Request&, httplib::Response& res) {
           // ["_A", "_B",..., "_Z", "_a", "_b",..., "_z", "_0", "_1",..., "_9"]
+
           res.set_header("Access-Control-Allow-Origin", "*");
           amIDynamicallyWorkingOnSomething = true;
+
+
           nlohmann::json output;
           for (const auto& [tag, itsMeaning] : TAGS_LOOKUP) {
             output.push_back(itsMeaning);
           }
+
+
           amIDynamicallyWorkingOnSomething = false;
           console << HEAD << "\"/existing_tags\" as GET";
           res.set_content(output.dump(), localServer.CONTENT_TYPE);
@@ -964,9 +995,13 @@ namespace Anti36Manager {
           ["E:\\$unsorted\\someImage.jpg","E:\\$unsorted\\someVideo.mp4",...
           "E:\\$unsorted\\someOtherImage.png","E:\\$unsorted\\someGif.mp4"]
           */
+
           res.set_header("Access-Control-Allow-Origin", "*");
           amIDynamicallyWorkingOnSomething = true;
+
+
           std::string output = "[";
+
           for (const cslib::VirtualPath& path : unsortedPortrayalsPaths) {
             output += '"';
             output += cslib::replace_str_in_str(path.path, "\\", "\\\\"); // Workaround for payload
@@ -976,10 +1011,13 @@ namespace Anti36Manager {
             output.pop_back();
           }
           output += "]";
+
+
           amIDynamicallyWorkingOnSomething = false;
           console << HEAD << "\"/unsorted\" as GET";
           res.set_content(output, localServer.CONTENT_TYPE);
         });
+
 
 
         localServer.server.Get("/are_you_busy", [this](const httplib::Request&, httplib::Response& res) {
@@ -988,21 +1026,18 @@ namespace Anti36Manager {
               "amIDynamicallyWorkingOnSomething": true
             }
           */
+
           res.set_header("Access-Control-Allow-Origin", "*");
+
+
           std::string amIDynamicallyWorkingOnSomethingAsStr = "{\"amIDynamicallyWorkingOnSomething\": ";
           amIDynamicallyWorkingOnSomethingAsStr += amIDynamicallyWorkingOnSomething ? "true}" : "false}";
-          console << HEAD << "Sent: " << amIDynamicallyWorkingOnSomethingAsStr;
+
+
+          console << HEAD << "\"/are_you_busy\" as GET";
           res.set_content(amIDynamicallyWorkingOnSomethingAsStr, localServer.CONTENT_TYPE);
         });
 
-
-        localServer.server.Get("/", [this](const httplib::Request&, httplib::Response& res) {
-          res.set_header("Access-Control-Allow-Origin", "*");
-          amIDynamicallyWorkingOnSomething = true;
-          refresh();
-          amIDynamicallyWorkingOnSomething = false;
-          res.set_content("{\"message\": \"Cleared and re-added data\"}", localServer.CONTENT_TYPE);
-        });
 
 
         localServer.server.Post("/sort_please", [this](const httplib::Request& req, httplib::Response& res) {
@@ -1014,9 +1049,12 @@ namespace Anti36Manager {
               "tags": ["_A", "_B", "_C", "_D"]
             }
           */
+
           res.set_header("Access-Control-Allow-Origin", "*");
           console << HEAD << "\"/sort_please\" as POST";
           amIDynamicallyWorkingOnSomething = true;
+
+
           nlohmann::json input = nlohmann::json::parse(req.body);
           Persona* persona = persona_exists(input["persona"], origin_exists(input["origin"]));
           std::deque<char> tags;
@@ -1030,10 +1068,14 @@ namespace Anti36Manager {
               break;
             }
           }
+
           move_and_integrate_portrayal(currentLocationInUnsortedByIndex, persona, tags, INDEX_AUTO_INCREMENT_CODE);
+
+
           amIDynamicallyWorkingOnSomething = false;
           res.set_content("{\"message\": \"Moved and integrated the portrayal\"}", localServer.CONTENT_TYPE);
         });
+
 
 
         localServer.server.Get("/current_portrayal_remix", [this](const httplib::Request&, httplib::Response& res) {
@@ -1045,7 +1087,7 @@ namespace Anti36Manager {
           std::string output = "[";
           for (Portrayal* portrayal : filteredPortrayals) {
             output += '"';
-            output += portrayal->where->path;
+            output += cslib::replace_str_in_str(portrayal->where->path, "\\", "\\\\"); // Workaround for payload
             output += "\",";
           }
           if (!filteredPortrayals.empty()) {
@@ -1056,6 +1098,7 @@ namespace Anti36Manager {
           console << HEAD << "\"/current_portrayal_remix\" as GET";
           res.set_content(output, localServer.CONTENT_TYPE);
         });
+
 
 
         localServer.server.Post("/remix_please", [this](const httplib::Request& req, httplib::Response& res) {
@@ -1070,8 +1113,12 @@ namespace Anti36Manager {
               "filterByType": "Image" (or "Video" for vids, "" for both)
             }
           */
+
           res.set_header("Access-Control-Allow-Origin", "*");
+          console << HEAD << "\"/remix_please\" as POST";
           amIDynamicallyWorkingOnSomething = true;
+
+
           nlohmann::json input = nlohmann::json::parse(req.body);
 
           filterByPersona.clear();
@@ -1094,10 +1141,13 @@ namespace Anti36Manager {
           }
 
           filterByType = input["filterByType"] == "Image" ? IMAGE : input["filterByType"] == "Video" ? VIDEO : NONE;
+
+          console << HEAD;
+          put_together_portrayal_remix_by_filter();
         });
 
 
-        // Start the local server
+
         amIDynamicallyWorkingOnSomething = false;
         localServer.start();
       }

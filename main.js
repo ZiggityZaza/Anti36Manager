@@ -118,9 +118,9 @@ class Anti36Proxy {
             body: JSON.stringify(data)
         });
 
-        // Refresh everything
-        document.getElementsByClassName("unsorted")[0].innerHTML = "";
-        this.set_unsortedPortrayals();
+        // Refresh everything (disabled for debugging)
+        // document.getElementsByClassName("unsorted")[0].innerHTML = "";
+        // this.set_unsortedPortrayals();
     }
 
     ask_server_to_make_portrayal_remix() {
@@ -140,7 +140,7 @@ class Anti36Proxy {
 
         let data = {
             "filterByPersonas": {
-                "League": ["Akali", "Ahri"],
+                "League": ["Akali"],
                 "IRL": ["Common"]
             },
             "filterByTags": ["_A", "_B", "_C", "_D"],
