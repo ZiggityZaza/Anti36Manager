@@ -28,40 +28,8 @@
 
 
 namespace cslib { // Jack of all trades (Helper functions and classes)
-    static double image_similarity(const std::string &image1, const std::string &image2) {
-      /*
-        This function takes two images and calculates the similarity between them.
-        The similarity is calculated by comparing the pixels of the images.
-
-        Note:
-          - If the images are the same, the result is 1.0
-          - If the images are completely different, the result is 0.0
-          - If the images are similar, the result is between 0.0 and 1.0
-      */
-
-      throw std::runtime_error("Not implemented yet");
-      return 0.0; // Placeholder
-    }
-
-
-    static bool cmd(const std::string &command) {
-      /*
-        This function takes a command and executes it in the command prompt.
-        The function returns true if the command was executed successfully and false otherwise.
-      */
-
-      system(command.c_str());
-      return false; // Placeholder
-    }
-
 
     static constexpr uint8_t MAX_GENERAL_STRING_LENGTH = 50;
-    static std::string shorten_str_if_necessary(const std::string &str, uint8_t maxLength = MAX_GENERAL_STRING_LENGTH) {
-        if (str.length() > maxLength) {
-          return str.substr(0, maxLength - 3) + "...";
-        }
-        return str;
-    }
     static std::string shorten_str_if_necessary_reverse(const std::string &str, uint8_t maxLength = MAX_GENERAL_STRING_LENGTH) {
         if (str.length() > maxLength) {
           return "..." + str.substr(str.length() - maxLength + 3); // +3 for the "..."
@@ -94,42 +62,9 @@ namespace cslib { // Jack of all trades (Helper functions and classes)
     }
 
 
-    static constexpr uint8_t MAX_CONSOLE_WIDTH = 120; // for 1080p screens
-    static std::string form_2d_chart(std::deque<std::string> strings) {
-      /*
-        This function takes a deque of strings and forms a 2D chart out of them. The
-        strings are resized to the longest string in the deque, put together, and a
-        new line is added after a certain amount of characters.
-
-        Note:
-          - First string is always added
-          - If the input is empty, an empty string is returned
-      */
-
-      std::size_t longestStringLenght = 0; 
-      for (const std::string &string : strings) {
-        longestStringLenght = std::max(longestStringLenght, string.length());
-      }
-      ++longestStringLenght; // Add a space between the strings
-
-      for (std::string &string : strings) {
-        string.resize(longestStringLenght, ' ');
-      }
-
-      std::string result;
-      std::size_t counter = 1; // Start at 1 because the first string is always added
-
-      for (const std::string &string : strings) {
-        result += string;
-        if (counter < (MAX_CONSOLE_WIDTH / longestStringLenght)) {
-          ++counter; // Hehe c++
-        } else {
-          counter = 1;
-          result += '\n';
-        }
-      }
-
-      return result;
+    static void crash(std::string errorMessage) {
+      std::cerr << "Error: " << errorMessage << std::endl;
+      std::exit(EXIT_FAILURE);
     }
 
 
@@ -168,13 +103,6 @@ namespace cslib { // Jack of all trades (Helper functions and classes)
     }
 
 
-  static std::string question() {
-    std::string r;
-    std::getline(std::cin, r);
-    return r;
-  }
-
-
   static constexpr int STOI_EMPTY_CODE = -1; // Empty value for joat::stoi
   static constexpr int STOI_ERROR_CODE = -2; // Error value for joat::stoi
   static int stoi(const std::string &str) {
@@ -194,10 +122,6 @@ namespace cslib { // Jack of all trades (Helper functions and classes)
     return std::find(dequeInQuestion.begin(), dequeInQuestion.end(), elementInQuestion) != dequeInQuestion.end();
   }
 
-  template <typename T>
-  static void erase_this_from_deque(std::deque<T>& dequeInQuestion, const T& elementInQuestion) {
-    dequeInQuestion.erase(std::remove(dequeInQuestion.begin(), dequeInQuestion.end(), elementInQuestion), dequeInQuestion.end());
-  }
 
   template <typename T>
   static bool do_these_deques_have_something_in_similar(const std::deque<T>& deque1, const std::deque<T>& deque2) {
@@ -230,6 +154,7 @@ namespace cslib { // Jack of all trades (Helper functions and classes)
     DualOutput& operator<<(const T& output) {
       std::cout << output;
       file << output;
+      file.flush();
       return *this;
     }
   };
@@ -411,7 +336,7 @@ namespace cslib { // Jack of all trades (Helper functions and classes)
       const std::filesystem::path std_path() const {
         return std::filesystem::path(path); // C:\Users\txts\exmpl.txt
       }
-      const unsigned short depth() const { // 3 (0 -> C:\, 1 -> Users, 2 -> txts, 3 -> exmpl.txt)
+      unsigned short depth() const { // 3 (0 -> C:\, 1 -> Users, 2 -> txts, 3 -> exmpl.txt)
         if (this->path.back() == '\\') {
           return std::count(path.begin(), path.end(), '\\') - 1;
         }

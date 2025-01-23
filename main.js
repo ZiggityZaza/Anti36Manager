@@ -95,7 +95,7 @@ class Anti36Proxy {
         });
     }
 
-    ask_server_to_sort_this_unsortedportrayal(pathToUnsortedPortrayal, tags, origin, persona) {
+    ask_sort_please(pathToUnsortedPortrayal, tags, origin, persona) {
         /*
             {
                 "currentLocationInUnsorted": "E:\\$unsorted\\someImage.jpg",
@@ -118,12 +118,21 @@ class Anti36Proxy {
             body: JSON.stringify(data)
         });
 
-        // Refresh everything (disabled for debugging)
-        // document.getElementsByClassName("unsorted")[0].innerHTML = "";
-        // this.set_unsortedPortrayals();
+        // Refresh everything
+        document.getElementById("unsorted").innerHTML = ""; // Clear unsorted panel
+
+        // Remove everything except the header
+        let uns_head = document.createElement("r");
+        uns_head.id = "uns_head";
+        document.getElementById("unsorted").appendChild(uns_head);
+
+        this.set_unsortedPortrayals();
+        setTimeout(function() {
+            set_unsorted_panel();
+        }, 1000);
     }
 
-    ask_server_to_make_portrayal_remix() {
+    ask_remix_please(filterByPersonas = {}, filterByTags = [], filterByType = "") {
         /*
             {
               "filterByPersonas": {
@@ -139,12 +148,9 @@ class Anti36Proxy {
         console.log("Asking server to make a remix");
 
         let data = {
-            "filterByPersonas": {
-                "League": ["Akali"],
-                "IRL": ["Common"]
-            },
-            "filterByTags": ["_A", "_B", "_C", "_D"],
-            "filterByType": ""
+            filterByPersonas,
+            filterByTags,
+            filterByType
         };
 
         fetch('http://localhost:8080/remix_please', {
@@ -246,7 +252,7 @@ function set_unsorted_panel() {
 
             document.getElementById("ws_below").innerHTML = workspaceMedia.outerHTML;
         }
-        document.getElementsByClassName("unsorted")[0].appendChild(display); // Only supports one container
+        document.getElementById("unsorted").appendChild(display);
     }
 
     unsortedListHeader.innerHTML = unsortedPortrayals.length;
@@ -265,7 +271,10 @@ function ws_control_panel_confirmed() {
     if (personaInputField.value === "") {
         console.log("No persona selected");
     } else {
-        console.log("Persona selected: " + personaInputField.value);
+        console.log("Persona selected: " + personaInputField.value + " from " + document.getElementById("originInputField").value);
+        for (let selectedTag of selectedTags) {
+            console.log(selectedTag);
+        }
     }
 };
 

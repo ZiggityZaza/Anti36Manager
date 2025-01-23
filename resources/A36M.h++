@@ -66,6 +66,8 @@ static constexpr const char* ASCII_ART = R"(
 #include <deque> // Containers with continuous memory addresses
 #include <map> // Specifically for TAGS lookup
 
+
+
 #pragma once
 #if __cplusplus < 202002L
   #error This program requires C++20
@@ -210,7 +212,7 @@ namespace Anti36Manager {
   };
   static const std::map<std::string_view, char> AS_LOOKUP = {};
 
-
+  #define TAG_COMBINATIONS const auto& [tagAsChar, tagMeaning] : TAGS_LOOKUP
 
 
   class LocalServer {
@@ -300,8 +302,8 @@ namespace Anti36Manager {
 
 
     bool tag_exists(const std::string_view tag) {
-      for (const auto& [tagChar, tagMeaning] : TAGS_LOOKUP) {
-        if (TAGS_LOOKUP.at(tagChar) == tag) {
+      for (TAG_COMBINATIONS) {
+        if (TAGS_LOOKUP.at(tagAsChar) == tag) {
           return true;
         }
       }
@@ -309,6 +311,15 @@ namespace Anti36Manager {
     }
     bool tag_exists(const char tag) {
       return TAGS_LOOKUP.find(tag) != TAGS_LOOKUP.end();
+    }
+
+
+
+    void block_other_operations() {
+      while (amIDynamicallyWorkingOnSomething) {
+        std::this_thread::yield();
+      }
+      amIDynamicallyWorkingOnSomething = true;
     }
 
 
@@ -589,8 +600,8 @@ namespace Anti36Manager {
 
 
       console << SUBLINE << "Configuring portrayals by tag";
-      for (const auto& [tag, itsMeaning] : TAGS_LOOKUP) {
-        portrayalsByTag[tag] = {};
+      for (TAG_COMBINATIONS) {
+        portrayalsByTag[tagAsChar] = {};
       }
       console << " (" << portrayalsByTag.size() << " tags)";
 
@@ -771,7 +782,7 @@ namespace Anti36Manager {
 
 
 
-    void move_and_integrate_portrayal(size_t& currentLocationInUnsortedByIndex, Persona *const persona, const std::deque<char>& tags, index_t index) {
+    void move_and_integrate_portrayal(size_t currentLocationInUnsortedByIndex, Persona *const persona, const std::deque<char>& tags, index_t index) {
       /*
         Important note! Method takes care of:...only this method should be used for this purpose
           - Moving file from the unsorted folder to the persona folder
@@ -787,14 +798,14 @@ namespace Anti36Manager {
 
       if (index == INDEX_AUTO_INCREMENT_CODE) {
         index = portrayalsByPersona[persona].size() + 1;
-        console << "Index is auto-incremented to " << index;
+        console << SUBLINE << "Index is auto-incremented to " << index;
       } else {
         for (Portrayal* portrayal : portrayalsByPersona[persona]) {
           if (portrayal->index >= index) {
             portrayal->index++;
           }
         }
-        console << "Index is manually set to " << index;
+        console << SUBLINE << "Index is manually set to " << index;
       }
 
       std::string newPath = ANTI36_FOLDER;
@@ -810,7 +821,6 @@ namespace Anti36Manager {
       }
       newPath += '_';
       newPath += unsortedPortrayalsPaths[currentLocationInUnsortedByIndex].extension();
-      console << SUBSUBLINE << "New path: " << newPath;
 
 
       if (!DEBUGGING) {
@@ -833,7 +843,7 @@ namespace Anti36Manager {
       }
       portrayalsByType[EXTENSION_TO_MEDIA.at(files.back().extension())].push_back(&portrayals.back());
 
-      console << SUBSUBLINE << "Moved and integrated " << files.back().filename() << " as " << &portrayals.back();
+      console << SUBSUBLINE << "Done. Integrated " << files.back().filename() << " as " << &portrayals.back();
     }
 
 
@@ -848,7 +858,24 @@ namespace Anti36Manager {
       */
 
       console << "Putting together a collection of portrayals based on filterByXY variables";
-
+      console << SUBLINE << "Filters by origin/persona:";
+      for (const auto& [origin, itsPersonas] : filterByPersona) {
+        console << SUBLINE << origin->name << ":";
+        for (Persona* persona : itsPersonas) {
+          console << SUBSUBLINE << persona->name;
+        }
+      }
+      console << SUBLINE << "Filters by tags:";
+      for (char tag : filterByTags) {
+        console << SUBSUBLINE << TAGS_LOOKUP.at(tag);
+      }
+      console << SUBLINE << "Filter by type: ";
+      switch (filterByType) {
+        case MediaType::IMAGE: console << "Image"; break;
+        case MediaType::VIDEO: console << "Video"; break;
+        case MediaType::NONE: console << "None"; break;
+        case MediaType::BOTH: console << "Both"; break;
+      }
 
       filteredPortrayals.clear();
 
@@ -869,10 +896,11 @@ namespace Anti36Manager {
       }
 
       // Remove the portrayals that don't match the filterByType
-      if (filterByType != MediaType::NONE or filterByType != MediaType::BOTH) {
-        for (Portrayal* portrayal : filteredPortrayals) {
-          if (EXTENSION_TO_MEDIA.at(portrayal->where->extension()) != filterByType) {
-            cslib::erase_this_from_deque(filteredPortrayals, portrayal);
+      if (filterByType != MediaType::NONE or filterByType != MediaType::BOTH and !filteredPortrayals.empty()) {
+        for (size_t posInDeque; posInDeque < filteredPortrayals.size(); ++posInDeque) {
+          if (EXTENSION_TO_MEDIA.at(filteredPortrayals[posInDeque]->where->extension()) != filterByType) {
+            filteredPortrayals.erase(filteredPortrayals.begin() + posInDeque);
+            --posInDeque;
           }
         }
       }
@@ -908,7 +936,7 @@ namespace Anti36Manager {
 
         localServer.server.Get("/", [this](const httplib::Request&, httplib::Response& res) {
           res.set_header("Access-Control-Allow-Origin", "*");
-          amIDynamicallyWorkingOnSomething = true;
+          block_other_operations();
           refresh();
           amIDynamicallyWorkingOnSomething = false;
           res.set_content("{\"message\": \"Cleared and re-added data\"}", localServer.CONTENT_TYPE);
@@ -945,7 +973,7 @@ namespace Anti36Manager {
           }*/
 
           res.set_header("Access-Control-Allow-Origin", "*");
-          amIDynamicallyWorkingOnSomething = true;
+          block_other_operations();
 
 
           nlohmann::json output;
@@ -975,12 +1003,12 @@ namespace Anti36Manager {
           // ["_A", "_B",..., "_Z", "_a", "_b",..., "_z", "_0", "_1",..., "_9"]
 
           res.set_header("Access-Control-Allow-Origin", "*");
-          amIDynamicallyWorkingOnSomething = true;
+          block_other_operations();
 
 
           nlohmann::json output;
-          for (const auto& [tag, itsMeaning] : TAGS_LOOKUP) {
-            output.push_back(itsMeaning);
+          for (TAG_COMBINATIONS) {
+            output.push_back(tagMeaning);
           }
 
 
@@ -997,7 +1025,7 @@ namespace Anti36Manager {
           */
 
           res.set_header("Access-Control-Allow-Origin", "*");
-          amIDynamicallyWorkingOnSomething = true;
+          block_other_operations();
 
 
           std::string output = "[";
@@ -1052,25 +1080,31 @@ namespace Anti36Manager {
 
           res.set_header("Access-Control-Allow-Origin", "*");
           console << HEAD << "\"/sort_please\" as POST";
-          amIDynamicallyWorkingOnSomething = true;
+          block_other_operations();
 
 
           nlohmann::json input = nlohmann::json::parse(req.body);
+          size_t currentLocationInUnsortedByIndex = 0;
+          while (unsortedPortrayalsPaths[currentLocationInUnsortedByIndex].path != input["currentLocationInUnsorted"].get<std::string>()) {
+            ++currentLocationInUnsortedByIndex;
+            if (currentLocationInUnsortedByIndex == unsortedPortrayalsPaths.size()) {
+              cslib::crash("The path \"" + input["currentLocationInUnsorted"].get<std::string>() + "\" doesn't exist in the unsortedPortrayalsPaths deque.");
+            }
+          }
+
           Persona* persona = persona_exists(input["persona"], origin_exists(input["origin"]));
+
           std::deque<char> tags;
           for (const std::string& tag : input["tags"]) {
-            tags.push_back(tag[0]);
-          }
-          size_t currentLocationInUnsortedByIndex = 0;
-          for (size_t i = 0; i < unsortedPortrayalsPaths.size(); ++i) {
-            if (unsortedPortrayalsPaths[i].path == input["currentLocationInUnsorted"].get<std::string>()) {
-              currentLocationInUnsortedByIndex = i;
-              break;
+            for (TAG_COMBINATIONS) { // Reverse lookup
+              if (tagMeaning == tag) {
+                tags.push_back(tagAsChar);
+                break;
+              }
             }
           }
 
           move_and_integrate_portrayal(currentLocationInUnsortedByIndex, persona, tags, INDEX_AUTO_INCREMENT_CODE);
-
 
           amIDynamicallyWorkingOnSomething = false;
           res.set_content("{\"message\": \"Moved and integrated the portrayal\"}", localServer.CONTENT_TYPE);
@@ -1083,7 +1117,7 @@ namespace Anti36Manager {
             ["E:\\Anti36Local\\Origin 1\\Persona 1\\1_ABCD_.jpg","E:\\Anti36Local\\Origin 1\\Persona 1\\2_EFGH_.jpg",...]
           */
           res.set_header("Access-Control-Allow-Origin", "*");
-          amIDynamicallyWorkingOnSomething = true;
+          block_other_operations();
           std::string output = "[";
           for (Portrayal* portrayal : filteredPortrayals) {
             output += '"';
@@ -1116,13 +1150,14 @@ namespace Anti36Manager {
 
           res.set_header("Access-Control-Allow-Origin", "*");
           console << HEAD << "\"/remix_please\" as POST";
-          amIDynamicallyWorkingOnSomething = true;
+          block_other_operations();
 
 
           nlohmann::json input = nlohmann::json::parse(req.body);
 
           filterByPersona.clear();
           filterByTags.clear();
+          filterByType = MediaType::BOTH;
           filteredPortrayals.clear();
 
           for (const auto& [origin, personas] : input["filterByPersonas"].items()) {
@@ -1132,9 +1167,9 @@ namespace Anti36Manager {
           }
 
           for (const std::string& filterByTag : input["filterByTags"]) { // Reverse lookup
-            for (const auto& [tag, itsMeaning] : TAGS_LOOKUP) {
-              if (itsMeaning == filterByTag) {
-                filterByTags.push_back(tag);
+            for (TAG_COMBINATIONS) {
+              if (tagMeaning == filterByTag) {
+                filterByTags.push_back(tagAsChar);
                 break;
               }
             }
