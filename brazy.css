@@ -20,18 +20,7 @@ body {
 
 
 
-.ws_area {
-    /* Box alignment */
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100%;
-    width: 100%;
-    margin-top: 2%;
-    margin-right: 2%;
-    margin-left: 2%;
-}
-.workspace {
+#workspace {
     height: 94%;
     width: 60%;
     margin-top: 2%;
@@ -162,7 +151,7 @@ body {
 
 
 
-#unsorted {
+#portrayal_previews {
     /* Box alignment */
     height: 94%;
     width: 35%;

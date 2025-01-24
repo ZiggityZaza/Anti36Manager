@@ -119,12 +119,7 @@ class Anti36Proxy {
         });
 
         // Refresh everything
-        document.getElementById("unsorted").innerHTML = ""; // Clear unsorted panel
-
-        // Remove everything except the header
-        let uns_head = document.createElement("r");
-        uns_head.id = "uns_head";
-        document.getElementById("unsorted").appendChild(uns_head);
+        document.getElementById("uns_elements").innerHTML = ""; // Clear unsorted panel
 
         this.set_unsortedPortrayals();
         setTimeout(function() {
@@ -175,93 +170,66 @@ let selectedTags = [];
 
 
 function set_tags_map_in_workspace() {
-    let workspace = document.getElementById("ws_panel");
+    const workspace = document.getElementById("ws_panel");
     workspace.innerHTML = "";
-    let tagsMap = document.createElement("div");
+    const tagsMap = document.createElement("div");
     tagsMap.id = "tags_map";
-    for (let tag of existingTags) {
-        let tagElement = document.createElement("div");
+
+    existingTags.forEach(tag => {
+        const tagElement = document.createElement("div");
         tagElement.className = "tag";
         tagElement.innerHTML = tag;
-        tagElement.onclick = function() {
-            if (selectedTags.includes(tag)) {
-                let index = selectedTags.indexOf(tag);
+        tagElement.onclick = () => {
+            const index = selectedTags.indexOf(tag);
+            if (index > -1) {
                 selectedTags.splice(index, 1);
                 tagElement.style.backgroundColor = "";
-            }
-            else {
+            } else {
                 selectedTags.push(tag);
-                // Put together random color
-                let color = "#";
-                for (let i = 0; i < 6; i++) {
-                    color += Math.floor(Math.random() * 16).toString(16);
-                }
-                tagElement.style.backgroundColor = color;
+                tagElement.style.backgroundColor = `#${Math.floor(Math.random() * 16777215).toString(16)}`;
             }
             console.log(selectedTags);
-        }
+        };
         tagsMap.appendChild(tagElement);
-    }
+    });
+
     workspace.appendChild(tagsMap);
 }
 
 
-function set_unsorted_panel() {
-    let unsortedListHeader = document.getElementById("uns_head");
-    unsortedListHeader.innerHTML = unsortedPortrayals.length;
 
-    for (let unsortedFPath of unsortedPortrayals) {
-        let display = null; // Unsorted portrayal to be appended
-        let isImage = null; // false = video, true = image
-        switch (unsortedFPath.split('.').pop()) {
-            case "jpg": case "jpeg": case "png": case "gif": case "bmp": case "webp":
-                isImage = true;
-                break;
-            case "mp4": case "webm": case "mkv": case "avi":
-                isImage = false;
-        }
+function set_unsorted_panel() {
+    const unsortedListHeader = document.getElementById("uns_head");
+    unsortedListHeader.innerHTML = `${unsortedPortrayals.length} files in "$unsorted"`;
+
+    unsortedPortrayals.forEach(unsortedFPath => {
+        const fileExtension = unsortedFPath.split('.').pop().toLowerCase();
+        const isImage = ["jpg", "jpeg", "png", "gif", "bmp", "webp"].includes(fileExtension);
+        const isVideo = ["mp4", "webm", "mkv", "avi"].includes(fileExtension);
+
+        let display;
         if (isImage) {
             display = document.createElement("img");
-        }
-        else {
+        } else if (isVideo) {
             display = document.createElement("video");
             display.muted = true;
             display.loop = true;
-            display.addEventListener("mouseover", function() {
-                display.play();
-            });
-            display.addEventListener("mouseout", function() {
-                display.pause();
-            });
+            display.addEventListener("mouseover", () => display.play());
+            display.addEventListener("mouseout", () => display.pause());
         }
+
         display.className = "uns_element";
         display.src = unsortedFPath;
-
-        // When clicked
-        display.onclick = function() {
-            let workspaceMedia = null;
-            if (isImage) {
-                workspaceMedia = document.createElement("img");
-            }
-            else {
-                workspaceMedia = document.createElement("video");
-                workspaceMedia.setAttribute("controls", "controls");
-            }
+        display.onclick = () => {
+            const workspaceMedia = isImage ? document.createElement("img") : document.createElement("video");
+            if (!isImage) workspaceMedia.setAttribute("controls", "controls");
             workspaceMedia.src = unsortedFPath;
             workspaceMedia.id = "ws_below";
-
             document.getElementById("ws_below").innerHTML = workspaceMedia.outerHTML;
-        }
-        document.getElementById("unsorted").appendChild(display);
-    }
-
-    unsortedListHeader.innerHTML = unsortedPortrayals.length;
-    unsortedListHeader.innerHTML += " files in \"";
-    unsortedListHeader.innerHTML += "$unsorted";
-    unsortedListHeader.innerHTML += '"';
-    document.body.style.cursor = "default";
+        };
+        document.getElementById("uns_elements").appendChild(display);
+    });
 }
-
 
 
 
@@ -280,15 +248,12 @@ function ws_control_panel_confirmed() {
 
 
 
-
 function origin_selected(userInput) {
+    let personaInputField = document.getElementById("personaInputField");
+    personaInputField.value = "";
     if (anti36Local["Anti36Local"][userInput] !== undefined) {
-        let personaInputField = document.getElementById("personaInputField");
-        personaInputField.value = "";
         let personaList = document.getElementById("persona_list");
         personaList.innerHTML = "";
-
-
         for (let persona in anti36Local["Anti36Local"][userInput]) {
             let option = document.createElement("option");
             option.value = persona;
@@ -321,8 +286,9 @@ function set_origin_list() {
 document.addEventListener("DOMContentLoaded", function() {
     document.body.style.cursor = "wait";
     setTimeout(function() {
-        set_unsorted_panel(); // Takes care of returning the cursor to normal
+        set_unsorted_panel();
         set_tags_map_in_workspace();
         set_origin_list();
+        document.body.style.cursor = "default";
     }, 1000);
 });
