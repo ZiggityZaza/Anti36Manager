@@ -243,6 +243,21 @@ function ws_control_panel_confirmed() {
         for (let selectedTag of selectedTags) {
             console.log(selectedTag);
         }
+        let pathToUnsortedPortrayal = document.getElementById("ws_below").firstChild.src;
+        if (pathToUnsortedPortrayal === undefined) {
+            console.log("No portrayal selected");
+        } else {
+            let pathToUnsortedPortrayalAsStr = pathToUnsortedPortrayal.toString();
+            // Remove the "file:///" prefix
+            pathToUnsortedPortrayalAsStr = pathToUnsortedPortrayalAsStr.substring(8);
+            // Convert the / to \\
+            pathToUnsortedPortrayalAsStr = pathToUnsortedPortrayalAsStr.replace(/\//g, "\\");
+            console.log(pathToUnsortedPortrayalAsStr);
+            client.ask_sort_please(pathToUnsortedPortrayalAsStr, selectedTags, document.getElementById("originInputField").value, personaInputField.value);
+            // Remove the workspace media
+            document.getElementById("ws_below").innerHTML = "";
+        }
+
     }
 };
 

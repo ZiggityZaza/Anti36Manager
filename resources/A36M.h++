@@ -82,14 +82,11 @@ namespace Anti36Manager {
   // This namespace contains all the necessary classes, variables and whatnot for the A36M
 
   // Console styling
-  static constexpr const char* HEAD = "\n >> "; // Line
-  static constexpr const char* WHEAD = " >> "; // Line
-  static constexpr const char* LINE = "---------------------------------------------------------------------------------------------------";
-  static constexpr const char* NEXT = "\n\n >> "; // Next section
-  static constexpr const char* SUBLINE = "\n  > "; // Subsection
-  static constexpr const char* WSUBLINE = "  > "; // Subsection without creating a new line
-  static constexpr const char* SUBSUBLINE = "\n   > "; // Subsubsection
-  static constexpr const char* WSUBSUBLINE = "   > "; // Subsubsection without creating a new line
+  static constexpr const char* NEXT_METHOD =  "\n\n >> "; // Entering new section
+  static constexpr const char* OCCURANCE =    "\n >> "; // Standalone operation
+  static constexpr const char* SUBLINE =      "\n  > "; // Next operation inside a method
+  static constexpr const char* SUBSUBLINE =   "\n   > "; // Iteration inside a loop inside a method
+  static constexpr const char* SUBSUBSUBLINE ="\n    > "; // Another iteration in...
 
   // Default values and Configs
   cslib::DualOutput console("F:\\log.txt");
@@ -741,7 +738,7 @@ namespace Anti36Manager {
         portrayals is disrupted.
       */
 
-      console << NEXT << "Refreshing the program";
+      console << NEXT_METHOD << "Refreshing the program";
 
       folders.clear();
       files.clear();
@@ -759,25 +756,25 @@ namespace Anti36Manager {
       console << SUBLINE << "Cleared all the easy-access containers";
 
       // Setup
-      console << NEXT;
+      console << NEXT_METHOD;
       read_ANTI36_FOLDER();
-      console << NEXT;
+      console << NEXT_METHOD;
       read_UNSORTED_FOLDER();
-      console << NEXT;
+      console << NEXT_METHOD;
       check_folders();
-      console << NEXT;
+      console << NEXT_METHOD;
       check_files();
-      console << NEXT;
+      console << NEXT_METHOD;
       catagorize_A36L_folders();
-      console << NEXT;
+      console << NEXT_METHOD;
       catagorize_files();
-      console << NEXT;
+      console << NEXT_METHOD;
       sort_byXY_containers();
-      console << NEXT;
+      console << NEXT_METHOD;
       full_duplicate_index_fix();
-      console << NEXT;
+      console << NEXT_METHOD;
       full_index_gaps_fix();
-      console << NEXT << "Refreshed the program";
+      console << NEXT_METHOD << "Refreshed the program";
     }
 
 
@@ -912,25 +909,25 @@ namespace Anti36Manager {
       explicit Main() {
 
         // Setup
-        console << NEXT;
+        console << NEXT_METHOD;
         read_ANTI36_FOLDER();
-        console << NEXT;
+        console << NEXT_METHOD;
         read_UNSORTED_FOLDER();
-        console << NEXT;
+        console << NEXT_METHOD;
         check_folders();
-        console << NEXT;
+        console << NEXT_METHOD;
         check_files();
-        console << NEXT;
+        console << NEXT_METHOD;
         catagorize_A36L_folders();
-        console << NEXT;
+        console << NEXT_METHOD;
         catagorize_files();
-        console << NEXT;
+        console << NEXT_METHOD;
         sort_byXY_containers();
-        console << NEXT;
+        console << NEXT_METHOD;
         full_duplicate_index_fix();
-        console << NEXT;
+        console << NEXT_METHOD;
         full_index_gaps_fix();
-        console << NEXT;
+        console << NEXT_METHOD;
 
 
 
@@ -993,7 +990,7 @@ namespace Anti36Manager {
 
 
           amIDynamicallyWorkingOnSomething = false;
-          console << HEAD << "\"/anti36local\" as GET";
+          console << OCCURANCE << "\"/anti36local\" as GET";
           res.set_content(output.dump(), localServer.CONTENT_TYPE);
         });
 
@@ -1013,7 +1010,7 @@ namespace Anti36Manager {
 
 
           amIDynamicallyWorkingOnSomething = false;
-          console << HEAD << "\"/existing_tags\" as GET";
+          console << OCCURANCE << "\"/existing_tags\" as GET";
           res.set_content(output.dump(), localServer.CONTENT_TYPE);
         });
 
@@ -1042,7 +1039,7 @@ namespace Anti36Manager {
 
 
           amIDynamicallyWorkingOnSomething = false;
-          console << HEAD << "\"/unsorted\" as GET";
+          console << OCCURANCE << "\"/unsorted\" as GET";
           res.set_content(output, localServer.CONTENT_TYPE);
         });
 
@@ -1062,7 +1059,7 @@ namespace Anti36Manager {
           amIDynamicallyWorkingOnSomethingAsStr += amIDynamicallyWorkingOnSomething ? "true}" : "false}";
 
 
-          console << HEAD << "\"/are_you_busy\" as GET";
+          console << OCCURANCE << "\"/are_you_busy\" as GET";
           res.set_content(amIDynamicallyWorkingOnSomethingAsStr, localServer.CONTENT_TYPE);
         });
 
@@ -1079,9 +1076,10 @@ namespace Anti36Manager {
           */
 
           res.set_header("Access-Control-Allow-Origin", "*");
-          console << HEAD << "\"/sort_please\" as POST";
+          console << OCCURANCE << "\"/sort_please\" as POST";
           block_other_operations();
 
+          try {
 
           nlohmann::json input = nlohmann::json::parse(req.body);
           size_t currentLocationInUnsortedByIndex = 0;
@@ -1103,8 +1101,15 @@ namespace Anti36Manager {
               }
             }
           }
+          if (tags.empty()) {
+            tags.push_back('0');
+          }
 
           move_and_integrate_portrayal(currentLocationInUnsortedByIndex, persona, tags, INDEX_AUTO_INCREMENT_CODE);
+
+          } catch (const std::exception& e) {
+            console << e.what();
+          }
 
           amIDynamicallyWorkingOnSomething = false;
           res.set_content("{\"message\": \"Moved and integrated the portrayal\"}", localServer.CONTENT_TYPE);
@@ -1118,6 +1123,7 @@ namespace Anti36Manager {
           */
           res.set_header("Access-Control-Allow-Origin", "*");
           block_other_operations();
+          try {
           std::string output = "[";
           for (Portrayal* portrayal : filteredPortrayals) {
             output += '"';
@@ -1129,8 +1135,12 @@ namespace Anti36Manager {
           }
           output += "]";
           amIDynamicallyWorkingOnSomething = false;
-          console << HEAD << "\"/current_portrayal_remix\" as GET";
+          console << OCCURANCE << "\"/current_portrayal_remix\" as GET";
           res.set_content(output, localServer.CONTENT_TYPE);
+          }
+          catch (const std::exception& e) {
+            console << e.what();
+          }
         });
 
 
@@ -1149,10 +1159,10 @@ namespace Anti36Manager {
           */
 
           res.set_header("Access-Control-Allow-Origin", "*");
-          console << HEAD << "\"/remix_please\" as POST";
+          console << OCCURANCE << "\"/remix_please\" as POST";
           block_other_operations();
 
-
+          try {
           nlohmann::json input = nlohmann::json::parse(req.body);
 
           filterByPersona.clear();
@@ -1177,8 +1187,13 @@ namespace Anti36Manager {
 
           filterByType = input["filterByType"] == "Image" ? IMAGE : input["filterByType"] == "Video" ? VIDEO : NONE;
 
-          console << HEAD;
+          console << OCCURANCE;
           put_together_portrayal_remix_by_filter();
+          amIDynamicallyWorkingOnSomething = false;
+          
+          } catch (const std::exception& e) {
+            console << e.what();
+          }
         });
 
 

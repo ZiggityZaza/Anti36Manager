@@ -1,4 +1,4 @@
-#include "resources/A36M.h++" // Include the NodeMap class
+#include "resources/A36M.h++"
 
 int main() {
   Anti36Manager::Main main;
