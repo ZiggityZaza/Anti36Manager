@@ -38,26 +38,44 @@ namespace cslib { // Jack of all trades (Helper functions and classes)
     }
 
 
-    static void replace_str_in_strref(std::string& stringInQuestion, const std::string replaceWhat, const std::string replaceWith) {
-      /*
-        This function takes a string and replaces all occurrences of a substring with another substring.
-        The string is passed by reference and the changes are made directly to the string.
-      */
+    static std::string unescape_string(const std::string &escapedString) {
 
-      std::size_t position = 0;
-      while ((position = stringInQuestion.find(replaceWhat, position)) != std::string::npos) { // As long as there is something to replace...
-        stringInQuestion.replace(position, replaceWhat.length(), replaceWith); // Replace it
-        position += replaceWith.length(); // Move the position to the end of the replacement
+      std::string result;
+      for (uint8_t i = 0; i < escapedString.length(); ++i) {
+        if (escapedString[i] == '\\') {
+          if (i + 1 < escapedString.length()) {
+            switch (escapedString[i + 1]) {
+              case 'n': result += '\n'; break;
+              case 't': result += '\t'; break;
+              case 'r': result += '\r'; break;
+              case '0': result += '\0'; break;
+              case '\\': result += '\\'; break;
+              case '\'': result += '\''; break;
+              case '\"': result += '\"'; break;
+              default: result += escapedString[i + 1]; break;
+            }
+            ++i;
+          }
+        } else {
+          result += escapedString[i];
+        }
       }
+      return result;
     }
-    static std::string replace_str_in_str(const std::string &stringInQuestion, const std::string replaceWhat, const std::string replaceWith) {
-      /*
-        This function takes a string and replaces all occurrences of a substring with another substring.
-        The original string is not changed and a new string is returned.
-      */
-
-      std::string result = stringInQuestion;
-      replace_str_in_strref(result, replaceWhat, replaceWith);
+    static std::string escape_string(const std::string &str) {
+      std::string result;
+      for (char c : str) {
+        switch (c) {
+          case '\n': result += "\\n"; break;
+          case '\t': result += "\\t"; break;
+          case '\r': result += "\\r"; break;
+          case '\0': result += "\\0"; break;
+          case '\\': result += "\\\\"; break;
+          case '\'': result += "\\\'"; break;
+          case '\"': result += "\\\""; break;
+          default: result += c; break;
+        }
+      }
       return result;
     }
 

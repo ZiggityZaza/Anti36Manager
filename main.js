@@ -95,18 +95,18 @@ class Anti36Proxy {
         });
     }
 
-    ask_sort_please(pathToUnsortedPortrayal, tags, origin, persona) {
+    ask_sort_please(pathToUnsortedPortrayalByIndex, tags, origin, persona) {
         /*
             {
-                "currentLocationInUnsorted": "E:\\$unsorted\\someImage.jpg",
-                "index": INDEX_AUTO_INCREMENT_CODE,
-                "origin": "Origin 1",
-                "persona": "Persona 1",
-                "tags": ["_A", "_B", "_C", "_D"]
+              "currentLocationInUnsortedByIndex": 2, ("E:\\$unsorted\\someImage.jpg")
+              "origin": "Origin 1",
+              "persona": "Persona 1",
+              "tags": ["_A", "_B", "_C", "_D"]
             }
         */
+
         let data = {
-            "currentLocationInUnsorted": pathToUnsortedPortrayal,
+            "currentLocationInUnsortedByIndex": pathToUnsortedPortrayalByIndex,
             "origin": origin,
             "persona": persona,
             "tags": tags
@@ -117,14 +117,6 @@ class Anti36Proxy {
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify(data)
         });
-
-        // Refresh everything
-        document.getElementById("uns_elements").innerHTML = ""; // Clear unsorted panel
-
-        this.set_unsortedPortrayals();
-        setTimeout(function() {
-            set_unsorted_panel();
-        }, 1000);
     }
 
     ask_remix_please(filterByPersonas = {}, filterByTags = [], filterByType = "") {
@@ -247,15 +239,17 @@ function ws_control_panel_confirmed() {
         if (pathToUnsortedPortrayal === undefined) {
             console.log("No portrayal selected");
         } else {
-            let pathToUnsortedPortrayalAsStr = pathToUnsortedPortrayal.toString();
-            // Remove the "file:///" prefix
-            pathToUnsortedPortrayalAsStr = pathToUnsortedPortrayalAsStr.substring(8);
-            // Convert the / to \\
-            pathToUnsortedPortrayalAsStr = pathToUnsortedPortrayalAsStr.replace(/\//g, "\\");
-            console.log(pathToUnsortedPortrayalAsStr);
-            client.ask_sort_please(pathToUnsortedPortrayalAsStr, selectedTags, document.getElementById("originInputField").value, personaInputField.value);
-            // Remove the workspace media
-            document.getElementById("ws_below").innerHTML = "";
+            let pathToUnsortedPortrayalByIndex = 0;
+            for (let i = 0; i < unsortedPortrayals.length; i++) {
+                if (unsortedPortrayals[i] === pathToUnsortedPortrayal) {
+                    pathToUnsortedPortrayalByIndex = i;
+                    break;
+                }
+            }
+            console.log(pathToUnsortedPortrayalByIndex);
+            client.ask_sort_please(pathToUnsortedPortrayalByIndex, selectedTags, document.getElementById("originInputField").value, personaInputField.value);
+            unsortedPortrayals.splice(pathToUnsortedPortrayalByIndex, 1); // Remove entry from unsorted container
+            document.getElementsByClassName("uns_element")[pathToUnsortedPortrayalByIndex].remove(); // Remove instance from uns_elements class by index
         }
 
     }
@@ -266,6 +260,8 @@ function ws_control_panel_confirmed() {
 function origin_selected(userInput) {
     let personaInputField = document.getElementById("personaInputField");
     personaInputField.value = "";
+    
+    // Set the persona list
     if (anti36Local["Anti36Local"][userInput] !== undefined) {
         let personaList = document.getElementById("persona_list");
         personaList.innerHTML = "";

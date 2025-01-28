@@ -1029,7 +1029,7 @@ namespace Anti36Manager {
 
           for (const cslib::VirtualPath& path : unsortedPortrayalsPaths) {
             output += '"';
-            output += cslib::replace_str_in_str(path.path, "\\", "\\\\"); // Workaround for payload
+            output += cslib::escape_string(path.path);
             output += "\",";
           }
           if (!unsortedPortrayalsPaths.empty()) {
@@ -1068,7 +1068,7 @@ namespace Anti36Manager {
         localServer.server.Post("/sort_please", [this](const httplib::Request& req, httplib::Response& res) {
           /*
             {
-              "currentLocationInUnsorted": "E:\\$unsorted\\someImage.jpg",
+              "currentLocationInUnsortedByIndex": 2, ("E:\\$unsorted\\someImage.jpg")
               "origin": "Origin 1",
               "persona": "Persona 1",
               "tags": ["_A", "_B", "_C", "_D"]
@@ -1081,35 +1081,34 @@ namespace Anti36Manager {
 
           try {
 
-          nlohmann::json input = nlohmann::json::parse(req.body);
-          size_t currentLocationInUnsortedByIndex = 0;
-          while (unsortedPortrayalsPaths[currentLocationInUnsortedByIndex].path != input["currentLocationInUnsorted"].get<std::string>()) {
-            ++currentLocationInUnsortedByIndex;
-            if (currentLocationInUnsortedByIndex == unsortedPortrayalsPaths.size()) {
-              cslib::crash("The path \"" + input["currentLocationInUnsorted"].get<std::string>() + "\" doesn't exist in the unsortedPortrayalsPaths deque.");
+            nlohmann::json input = nlohmann::json::parse(req.body);
+
+            size_t currentLocationInUnsortedByIndex = input["currentLocationInUnsortedByIndex"].get<size_t>();
+            if (currentLocationInUnsortedByIndex >= unsortedPortrayalsPaths.size()) {
+              cslib::crash("The index " + std::to_string(currentLocationInUnsortedByIndex) + " is out of bounds.");
             }
-          }
 
-          Persona* persona = persona_exists(input["persona"], origin_exists(input["origin"]));
+            Persona* persona = persona_exists(input["persona"], origin_exists(input["origin"]));
+            if (persona == &PERSONA_ERROR_TYPE) {
+              cslib::crash("The persona \"" + input["persona"].get<std::string>() + "\" from the origin \"" + input["origin"].get<std::string>() + "\" doesn't exist.");
+            }
 
-          std::deque<char> tags;
-          for (const std::string& tag : input["tags"]) {
-            for (TAG_COMBINATIONS) { // Reverse lookup
-              if (tagMeaning == tag) {
-                tags.push_back(tagAsChar);
-                break;
+            std::deque<char> tags;
+            for (const std::string& tag : input["tags"]) {
+              for (TAG_COMBINATIONS) { // Reverse lookup
+                if (tagMeaning == tag) {
+                  tags.push_back(tagAsChar);
+                  break;
+                }
               }
             }
-          }
-          if (tags.empty()) {
-            tags.push_back('0');
-          }
+            if (tags.empty()) {
+              tags.push_back('0');
+            }
 
-          move_and_integrate_portrayal(currentLocationInUnsortedByIndex, persona, tags, INDEX_AUTO_INCREMENT_CODE);
+            move_and_integrate_portrayal(currentLocationInUnsortedByIndex, persona, tags, INDEX_AUTO_INCREMENT_CODE);
 
-          } catch (const std::exception& e) {
-            console << e.what();
-          }
+          } catch (const std::exception& e) {console << e.what();}
 
           amIDynamicallyWorkingOnSomething = false;
           res.set_content("{\"message\": \"Moved and integrated the portrayal\"}", localServer.CONTENT_TYPE);
@@ -1123,24 +1122,23 @@ namespace Anti36Manager {
           */
           res.set_header("Access-Control-Allow-Origin", "*");
           block_other_operations();
+
           try {
-          std::string output = "[";
-          for (Portrayal* portrayal : filteredPortrayals) {
-            output += '"';
-            output += cslib::replace_str_in_str(portrayal->where->path, "\\", "\\\\"); // Workaround for payload
-            output += "\",";
-          }
-          if (!filteredPortrayals.empty()) {
-            output.pop_back();
-          }
-          output += "]";
-          amIDynamicallyWorkingOnSomething = false;
-          console << OCCURANCE << "\"/current_portrayal_remix\" as GET";
-          res.set_content(output, localServer.CONTENT_TYPE);
-          }
-          catch (const std::exception& e) {
-            console << e.what();
-          }
+            std::string output = "[";
+            for (Portrayal* portrayal : filteredPortrayals) {
+              output += '"';
+              output += cslib::unescape_string(portrayal->where->path);
+              output += "\",";
+            }
+            if (!filteredPortrayals.empty()) {
+              output.pop_back();
+            }
+            output += "]";
+            amIDynamicallyWorkingOnSomething = false;
+            console << OCCURANCE << "\"/current_portrayal_remix\" as GET";
+            res.set_content(output, localServer.CONTENT_TYPE);
+
+          } catch (const std::exception& e) {console << e.what();}
         });
 
 
@@ -1191,9 +1189,7 @@ namespace Anti36Manager {
           put_together_portrayal_remix_by_filter();
           amIDynamicallyWorkingOnSomething = false;
           
-          } catch (const std::exception& e) {
-            console << e.what();
-          }
+          } catch (const std::exception& e) {console << e.what();}
         });
 
 
