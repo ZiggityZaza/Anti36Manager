@@ -1,0 +1,33 @@
+<head>
+    <title>Anti36Manager v1.4</title>
+    <link rel="icon" href="https://raw.githubusercontent.com/ZiggityZaza/Anti36Manager/refs/heads/main/brazyimages/sexy.jpg">
+    <script src="main.js"></script>
+    <link rel="stylesheet" href="brazy.css">
+</head>
+<body>
+    <div id="portrayal_previews">
+        <r id="uns_head"><!-- X files in "$unsorted" --></r>
+        <div id="uns_elements">
+            <!-- Images and such -->
+        </div>
+    </div>
+
+    <div id="workspace">
+        <r id="ws_panel_head">Preference Panel ('PP' for short)</r>
+        <div id="ws_panel"></div>
+        <div id="ws_control_panel">
+            <div id="ws_control_panel_add_button" onclick="ws_control_panel_confirmed()">Confirm</div>
+            <div id="ws_control_panel_switch_button">Switch to sorting/filtering</div>
+        </div>
+        <div id="ws_input_panel">
+            <input list="origin_list" name="origin" id="originInputField" onchange="origin_selected(this.value)" placeholder="Select an origin here">
+            <datalist id="origin_list"></datalist>
+            <input list="persona_list" name="persona" id="personaInputField" onchange="persona_selected(this.value)" placeholder="The persona from that origin">
+            <datalist id="persona_list"></datalist>
+        </div>
+
+        <r id="ws_below_head">Workspace</r>
+        <div id="ws_below">
+        </div>
+    </div>
+</body>
