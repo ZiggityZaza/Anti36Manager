@@ -56,6 +56,7 @@ static constexpr const char* ASCII_ART = R"(
 // Next: https://patorjk.com/software/taag/#p=display&h=3&v=3&f=Sweet&t=Anti36Manager%20v1.4
 // Next: https://patorjk.com/software/taag/#p=display&h=3&v=3&f=NScript&t=Anti36Manager%20v1.4
 
+#include "a36mtagmap.hpp"
 #include "cslib.h++" // Custom library for Anti36Manager
 #include <unordered_map> // Faster lookups
 #include <filesystem> // Manipulating and reading files and folders in the Anti36Local folder
@@ -64,7 +65,6 @@ static constexpr const char* ASCII_ART = R"(
 #include <fstream> // Generating html file
 #include <cstdint> // Cooler numbers (small numbers supported by stl)
 #include <deque> // Containers with continuous memory addresses
-#include <map> // Specifically for TAGS lookup
 
 
 
@@ -143,70 +143,7 @@ namespace Anti36Manager {
     {".bmp", IMAGE},
     {".webp", IMAGE}
   };
-  static const std::map<char, std::string_view> TAGS_LOOKUP = {
-    {'A', "_A"},
-    {'B', "_B"},
-    {'C', "_C"},
-    {'D', "_D"},
-    {'E', "_E"},
-    {'F', "_F"},
-    {'G', "_G"},
-    {'H', "_H"},
-    {'I', "_I"},
-    {'J', "_J"},
-    {'K', "_K"},
-    {'L', "_L"},
-    {'M', "_M"},
-    {'N', "_N"},
-    {'O', "_O"},
-    {'P', "_P"},
-    {'Q', "_Q"},
-    {'R', "_R"},
-    {'S', "_S"},
-    {'T', "_T"},
-    {'U', "_U"},
-    {'V', "_V"},
-    {'W', "_W"},
-    {'X', "_X"},
-    {'Y', "_Y"},
-    {'Z', "_Z"},
-    {'a', "_a"},
-    {'b', "_b"},
-    {'c', "_c"},
-    {'d', "_d"},
-    {'e', "_e"},
-    {'f', "_f"},
-    {'g', "_g"},
-    {'h', "_h"},
-    {'i', "_i"},
-    {'j', "_j"},
-    {'k', "_k"},
-    {'l', "_l"},
-    {'m', "_m"},
-    {'n', "_n"},
-    {'o', "_o"},
-    {'p', "_p"},
-    {'q', "_q"},
-    {'r', "_r"},
-    {'s', "_s"},
-    {'t', "_t"},
-    {'u', "_u"},
-    {'v', "_v"},
-    {'w', "_w"},
-    {'x', "_x"},
-    {'y', "_y"},
-    {'z', "_z"},
-    {'0', "_0"},
-    {'1', "_1"},
-    {'2', "_2"},
-    {'3', "_3"},
-    {'4', "_4"},
-    {'5', "_5"},
-    {'6', "_6"},
-    {'7', "_7"},
-    {'8', "_8"},
-    {'9', "_9"}
-  };
+
   static const std::map<std::string_view, char> AS_LOOKUP = {};
 
   #define TAG_COMBINATIONS const auto& [tagAsChar, tagMeaning] : TAGS_LOOKUP

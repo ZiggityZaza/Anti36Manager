@@ -235,13 +235,18 @@ function ws_control_panel_confirmed() {
         for (let selectedTag of selectedTags) {
             console.log(selectedTag);
         }
-        let pathToUnsortedPortrayal = document.getElementById("ws_below").firstChild.src;
+        let pathToUnsortedPortrayal = document.getElementById("ws_below").firstChild.src; // Careful: file:///E:/$unsorted/someImage.jpg
         if (pathToUnsortedPortrayal === undefined) {
             console.log("No portrayal selected");
         } else {
+            // Remove the "file:///" prefix
+            pathToUnsortedPortrayal = pathToUnsortedPortrayal.substring(8);
+            // Covert / to \\
+            pathToUnsortedPortrayal = pathToUnsortedPortrayal.replace(/\//g, "\\");
             let pathToUnsortedPortrayalByIndex = 0;
             for (let i = 0; i < unsortedPortrayals.length; i++) {
-                if (unsortedPortrayals[i] === pathToUnsortedPortrayal) {
+                console.log(`Comparing ${unsortedPortrayals[i]} with ${pathToUnsortedPortrayal}`);
+                if (unsortedPortrayals[i] === pathToUnsortedPortrayal.toString()) {
                     pathToUnsortedPortrayalByIndex = i;
                     break;
                 }
