@@ -1,5 +1,4 @@
-# Anti36Manager 🦴 (YO READ THIS FR!)
-THERE IS A BUG. IT AINT GONNA DELETE YOUR STUFF BUT MIGHT MOVE YOUR STUFF IN UNPREDICTABLE WAYS. I'm going to fix this next commit today around 16 or 17 berlin time
+# Anti36Manager 🦴
 Useless solution to sort and manage yer favorite "appropriate" pictures/videos. Sorted by origins, personas, tags and media types.
 
 
