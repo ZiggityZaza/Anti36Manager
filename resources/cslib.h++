@@ -175,6 +175,14 @@ namespace cslib { // Jack of all trades (Helper functions and classes)
       file.flush();
       return *this;
     }
+
+    template <typename T>
+    DualOutput& operator<<(T&& output) {
+      std::cout << output;
+      file << output;
+      file.flush();
+      return *this;
+    }
   };
 
 

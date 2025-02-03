@@ -82,7 +82,7 @@ namespace Anti36Manager {
   // This namespace contains all the necessary classes, variables and whatnot for the A36M
 
   // Console styling
-  static constexpr const char* NEXT_METHOD =  "\n\n >> "; // Entering new section
+  static constexpr const char* NEXT_METHOD ="\n\n >> "; // Entering new section
   static constexpr const char* OCCURANCE =    "\n >> "; // Standalone operation
   static constexpr const char* SUBLINE =      "\n  > "; // Next operation inside a method
   static constexpr const char* SUBSUBLINE =   "\n   > "; // Iteration inside a loop inside a method
@@ -91,7 +91,6 @@ namespace Anti36Manager {
   // Default values and Configs
   cslib::DualOutput console("F:\\log.txt");
   using index_t = unsigned short;
-  static constexpr bool DEBUGGING = false;
   static constexpr char WELCOME_SCREEN_SORTING_OPTION = '0';
   static constexpr char WELCOME_SCREEN_VIEWING_OPTION = '1';
   static constexpr char WELCOME_SCREEN_SUMMARY_OPTION = '2';
@@ -143,9 +142,6 @@ namespace Anti36Manager {
     {".bmp", IMAGE},
     {".webp", IMAGE}
   };
-
-  static const std::map<std::string_view, char> AS_LOOKUP = {};
-
   #define TAG_COMBINATIONS const auto& [tagAsChar, tagMeaning] : TAGS_LOOKUP
 
 
@@ -249,11 +245,10 @@ namespace Anti36Manager {
 
 
 
-    void block_other_operations() {
+    void wait_for_other_operations() {
       while (amIDynamicallyWorkingOnSomething) {
         std::this_thread::yield();
       }
-      amIDynamicallyWorkingOnSomething = true;
     }
 
 
@@ -276,11 +271,7 @@ namespace Anti36Manager {
       newPath += '_';
       newPath += portrayalInQuestion->where->extension();
 
-      if (!DEBUGGING) {
-        portrayalInQuestion->where->move_to(newPath);
-      } else {
-        portrayalInQuestion->where->pretend_to_move_to(newPath);
-      }
+      portrayalInQuestion->where->move_to(newPath);
     }
 
 
@@ -411,7 +402,7 @@ namespace Anti36Manager {
 
         int translatingIndex = cslib::stoi(splitFilename[0]);
         if (translatingIndex <= 0 or translatingIndex >= INDEX_AUTO_INCREMENT_CODE) {
-          throw std::runtime_error("The index \"" + splitFilename[0] + "\" of the file \"" + file.path + "\" is not valid.");
+          throw std::runtime_error("The index \"" + splitFilename[0] + "\" of the file \"" + file.path + "\" ain't valid.");
         }
 
 
@@ -454,6 +445,7 @@ namespace Anti36Manager {
 
           case 3: {
             personas.push_back({&origins.back(), folder[3], &folder}); // This is the place where I learned that std::vectors don't support pointers
+            console << SUBSUBLINE << "with \"" << personas.back().name << '"';
           }
         }
       }
@@ -756,14 +748,8 @@ namespace Anti36Manager {
       newPath += '_';
       newPath += unsortedPortrayalsPaths[currentLocationInUnsortedByIndex].extension();
 
-
-      if (!DEBUGGING) {
-        unsortedPortrayalsPaths[currentLocationInUnsortedByIndex].move_to(newPath);
-        console << SUBSUBLINE << "Moved to " << newPath;
-      } else {
-        unsortedPortrayalsPaths[currentLocationInUnsortedByIndex].pretend_to_move_to(newPath);
-        console << SUBSUBLINE << "Pretended to move to " << newPath;
-      }
+      unsortedPortrayalsPaths[currentLocationInUnsortedByIndex].move_to(newPath);
+      console << SUBSUBLINE << "Moved to " << newPath;
 
       files.push_back(unsortedPortrayalsPaths[currentLocationInUnsortedByIndex]);
       unsortedPortrayalsPaths.erase(unsortedPortrayalsPaths.begin() + currentLocationInUnsortedByIndex);
@@ -867,13 +853,16 @@ namespace Anti36Manager {
         console << NEXT_METHOD;
 
 
+        #define CATCH_ERROR_CONTENT catch(const std::exception& e){res.set_content("{\"message\": \""+std::string(e.what())+"\"}",localServer.CONTENT_TYPE);console << OCCURANCE << "Error: " << e.what();}
 
         localServer.server.Get("/", [this](const httplib::Request&, httplib::Response& res) {
           res.set_header("Access-Control-Allow-Origin", "*");
-          block_other_operations();
-          refresh();
+          wait_for_other_operations();
+          try {
+            refresh();
+            res.set_content("{\"message\": \"Cleared and re-added data\"}", localServer.CONTENT_TYPE);
+          } CATCH_ERROR_CONTENT
           amIDynamicallyWorkingOnSomething = false;
-          res.set_content("{\"message\": \"Cleared and re-added data\"}", localServer.CONTENT_TYPE);
         });
 
 
@@ -907,28 +896,28 @@ namespace Anti36Manager {
           }*/
 
           res.set_header("Access-Control-Allow-Origin", "*");
-          block_other_operations();
+          wait_for_other_operations();
 
-
-          nlohmann::json output;
-          output["Anti36Local"] = {};
-          for (const Origin& origin : origins) {
-            output["Anti36Local"][origin.name] = {};
-            for (Persona* persona : personasByOrigin[origin_exists(origin.name)]) {
-              output["Anti36Local"][origin.name][persona->name] = {};
-              for (Portrayal* portrayal : portrayalsByPersona[persona]) {
-                output["Anti36Local"][origin.name][persona->name][portrayal->index]["path"] = portrayal->where->path;
-                for (char tag : portrayal->tags) {
-                  output["Anti36Local"][origin.name][persona->name][portrayal->index]["tags"].push_back(TAGS_LOOKUP.at(tag));
+          try {
+            nlohmann::json output;
+            output["Anti36Local"] = {};
+            for (const Origin& origin : origins) {
+              output["Anti36Local"][origin.name] = {};
+              for (Persona* persona : personasByOrigin[origin_exists(origin.name)]) {
+                output["Anti36Local"][origin.name][persona->name] = {};
+                for (Portrayal* portrayal : portrayalsByPersona[persona]) {
+                  output["Anti36Local"][origin.name][persona->name][portrayal->index]["path"] = portrayal->where->path;
+                  for (char tag : portrayal->tags) {
+                    output["Anti36Local"][origin.name][persona->name][portrayal->index]["tags"].push_back(TAGS_LOOKUP.at(tag));
+                  }
                 }
               }
             }
-          }
-
+            console << OCCURANCE << "\"/anti36local\" as GET";
+            res.set_content(output.dump(), localServer.CONTENT_TYPE);
+          } CATCH_ERROR_CONTENT
 
           amIDynamicallyWorkingOnSomething = false;
-          console << OCCURANCE << "\"/anti36local\" as GET";
-          res.set_content(output.dump(), localServer.CONTENT_TYPE);
         });
 
 
@@ -937,16 +926,12 @@ namespace Anti36Manager {
           // ["_A", "_B",..., "_Z", "_a", "_b",..., "_z", "_0", "_1",..., "_9"]
 
           res.set_header("Access-Control-Allow-Origin", "*");
-          block_other_operations();
-
 
           nlohmann::json output;
           for (TAG_COMBINATIONS) {
             output.push_back(tagMeaning);
           }
 
-
-          amIDynamicallyWorkingOnSomething = false;
           console << OCCURANCE << "\"/existing_tags\" as GET";
           res.set_content(output.dump(), localServer.CONTENT_TYPE);
         });
@@ -959,11 +944,9 @@ namespace Anti36Manager {
           */
 
           res.set_header("Access-Control-Allow-Origin", "*");
-          block_other_operations();
-
+          wait_for_other_operations();
 
           std::string output = "[";
-
           for (const cslib::VirtualPath& path : unsortedPortrayalsPaths) {
             output += '"';
             output += cslib::escape_string(path.path);
@@ -974,32 +957,10 @@ namespace Anti36Manager {
           }
           output += "]";
 
-
           amIDynamicallyWorkingOnSomething = false;
           console << OCCURANCE << "\"/unsorted\" as GET";
           res.set_content(output, localServer.CONTENT_TYPE);
         });
-
-
-
-        localServer.server.Get("/are_you_busy", [this](const httplib::Request&, httplib::Response& res) {
-          /*
-            {
-              "amIDynamicallyWorkingOnSomething": true
-            }
-          */
-
-          res.set_header("Access-Control-Allow-Origin", "*");
-
-
-          std::string amIDynamicallyWorkingOnSomethingAsStr = "{\"amIDynamicallyWorkingOnSomething\": ";
-          amIDynamicallyWorkingOnSomethingAsStr += amIDynamicallyWorkingOnSomething ? "true}" : "false}";
-
-
-          console << OCCURANCE << "\"/are_you_busy\" as GET";
-          res.set_content(amIDynamicallyWorkingOnSomethingAsStr, localServer.CONTENT_TYPE);
-        });
-
 
 
         localServer.server.Post("/sort_please", [this](const httplib::Request& req, httplib::Response& res) {
@@ -1014,10 +975,9 @@ namespace Anti36Manager {
 
           res.set_header("Access-Control-Allow-Origin", "*");
           console << OCCURANCE << "\"/sort_please\" as POST";
-          block_other_operations();
+          
 
           try {
-
             nlohmann::json input = nlohmann::json::parse(req.body);
 
             size_t currentLocationInUnsortedByIndex = input["currentLocationInUnsortedByIndex"].get<size_t>();
@@ -1044,11 +1004,10 @@ namespace Anti36Manager {
             }
 
             move_and_integrate_portrayal(currentLocationInUnsortedByIndex, persona, tags, INDEX_AUTO_INCREMENT_CODE);
-
-          } catch (const std::exception& e) {console << e.what();}
+            res.set_content("{\"message\": \"Moved and integrated the portrayal\"}", localServer.CONTENT_TYPE);
+          } CATCH_ERROR_CONTENT
 
           amIDynamicallyWorkingOnSomething = false;
-          res.set_content("{\"message\": \"Moved and integrated the portrayal\"}", localServer.CONTENT_TYPE);
         });
 
 
@@ -1058,10 +1017,9 @@ namespace Anti36Manager {
             ["E:\\Anti36Local\\Origin 1\\Persona 1\\1_ABCD_.jpg","E:\\Anti36Local\\Origin 1\\Persona 1\\2_EFGH_.jpg",...]
           */
           res.set_header("Access-Control-Allow-Origin", "*");
-          block_other_operations();
 
+          std::string output = "[";
           try {
-            std::string output = "[";
             for (Portrayal* portrayal : filteredPortrayals) {
               output += '"';
               output += cslib::unescape_string(portrayal->where->path);
@@ -1071,11 +1029,11 @@ namespace Anti36Manager {
               output.pop_back();
             }
             output += "]";
-            amIDynamicallyWorkingOnSomething = false;
             console << OCCURANCE << "\"/current_portrayal_remix\" as GET";
             res.set_content(output, localServer.CONTENT_TYPE);
+          } CATCH_ERROR_CONTENT
 
-          } catch (const std::exception& e) {console << e.what();}
+          amIDynamicallyWorkingOnSomething = false;
         });
 
 
@@ -1095,40 +1053,39 @@ namespace Anti36Manager {
 
           res.set_header("Access-Control-Allow-Origin", "*");
           console << OCCURANCE << "\"/remix_please\" as POST";
-          block_other_operations();
-
+          
           try {
-          nlohmann::json input = nlohmann::json::parse(req.body);
+            nlohmann::json input = nlohmann::json::parse(req.body);
 
-          filterByPersona.clear();
-          filterByTags.clear();
-          filterByType = MediaType::BOTH;
-          filteredPortrayals.clear();
+            filterByPersona.clear();
+            filterByTags.clear();
+            filterByType = MediaType::BOTH;
+            filteredPortrayals.clear();
 
-          for (const auto& [origin, personas] : input["filterByPersonas"].items()) {
-            for (const std::string& persona : personas) {
-              filterByPersona[origin_exists(origin)].push_back(persona_exists(persona, origin_exists(origin)));
-            }
-          }
-
-          for (const std::string& filterByTag : input["filterByTags"]) { // Reverse lookup
-            for (TAG_COMBINATIONS) {
-              if (tagMeaning == filterByTag) {
-                filterByTags.push_back(tagAsChar);
-                break;
+            for (const auto& [origin, personas] : input["filterByPersonas"].items()) {
+              for (const std::string& persona : personas) {
+                filterByPersona[origin_exists(origin)].push_back(persona_exists(persona, origin_exists(origin)));
               }
             }
-          }
 
-          filterByType = input["filterByType"] == "Image" ? IMAGE : input["filterByType"] == "Video" ? VIDEO : NONE;
+            for (const std::string& filterByTag : input["filterByTags"]) { // Reverse lookup
+              for (TAG_COMBINATIONS) {
+                if (tagMeaning == filterByTag) {
+                  filterByTags.push_back(tagAsChar);
+                  break;
+                }
+              }
+            }
 
-          console << OCCURANCE;
-          put_together_portrayal_remix_by_filter();
+            filterByType = input["filterByType"] == "Image" ? IMAGE : input["filterByType"] == "Video" ? VIDEO : NONE;
+
+            console << OCCURANCE;
+            put_together_portrayal_remix_by_filter();
+            res.set_content("{\"message\": \"Here is the remix you asked for\"}", localServer.CONTENT_TYPE);
+          } CATCH_ERROR_CONTENT
+
           amIDynamicallyWorkingOnSomething = false;
-          
-          } catch (const std::exception& e) {console << e.what();}
         });
-
 
 
         amIDynamicallyWorkingOnSomething = false;
