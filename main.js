@@ -110,6 +110,136 @@ const client = new Anti36Proxy();
 
 
 
+// Set left panel values
+function set_unsorted_panel() {
+    const unsortedListHeader = document.getElementById("portrayal_previews_title");
+    unsortedListHeader.innerHTML = `${unsortedPortrayals.length} files in "$unsorted"`;
+
+    unsortedPortrayals.forEach(unsortedFPath => {
+        const fileExtension = unsortedFPath.split('.').pop().toLowerCase();
+        const isImage = ["jpg", "jpeg", "png", "gif", "bmp", "webp"].includes(fileExtension);
+        const isVideo = ["mp4", "webm", "mkv", "avi"].includes(fileExtension);
+
+        let display = isImage ? document.createElement("img") : document.createElement("video");
+        display.className = "portrayal_element";
+        display.src = unsortedFPath;
+        display.onclick = () => {
+            const workspaceMedia = isImage ? document.createElement("img") : document.createElement("video");
+            if (isVideo) {
+                workspaceMedia.setAttribute("controls", "controls");
+                workspaceMedia.autoplay = true;
+                workspaceMedia.muted = true;
+                workspaceMedia.loop = true;
+            }
+            workspaceMedia.src = unsortedFPath;
+            workspaceMedia.id = "portrayal_element_selected";
+            document.getElementById("ws_below").innerHTML = workspaceMedia.outerHTML;
+        };
+        document.getElementById("portrayal_elements").appendChild(display);
+    });
+}
+
+
+
+
+// Set right panel values
+function add_origin_datalist() {
+    const dataList = document.getElementById("origin_list");
+    for (const origin in anti36Local["Anti36Local"]) {
+        const option = document.createElement("option");
+        option.value = origin;
+        dataList.appendChild(option);
+    }
+}
+
+
+function set_persona_datalist(origin) {
+    const dataList = document.getElementById("persona_list");
+    dataList.innerHTML = "";
+    document.getElementById("personaInputField").value = "";
+
+    if (anti36Local["Anti36Local"][origin] !== undefined) {
+        for (const persona in anti36Local["Anti36Local"][origin]) {
+            const option = document.createElement("option");
+            option.value = persona;
+            dataList.appendChild(option);
+        }
+    }
+}
+
+
+
+let selectedTags = [];
+
+function add_tags_map_in_workspace() {
+    existingTags.forEach(tag => {
+        const tagElement = document.createElement("div");
+        tagElement.className = "tag";
+        tagElement.innerHTML = tag;
+        tagElement.onclick = () => {
+            if (selectedTags.includes(tag)) {
+                selectedTags = selectedTags.filter(t => t !== tag); // lambda function to remove tag from selectedTags
+                tagElement.style.backgroundColor = "";
+            } else {
+                selectedTags.push(tag);
+                tagElement.style.backgroundColor = `#${Math.floor(Math.random() * 16777215).toString(16)}`;
+            }
+        };
+        document.getElementById("tags_map").appendChild(tagElement);
+    });
+}
+
+
+function pressed_confirm_button_for_sorting() {
+    const personaInputField = document.getElementById("personaInputField");
+    if (personaInputField.value !== "") {
+        console.log(`Persona selected: ${personaInputField.value} from ${document.getElementById("originInputField").value}`);
+        const pathToUnsortedPortrayal = document.getElementById("ws_below").firstChild.src;
+        if (pathToUnsortedPortrayal === undefined) {
+            console.log("No portrayal selected");
+            return;
+        }
+
+        // Set correct values
+        pathToUnsortedPortrayal = pathToUnsortedPortrayal.substring(8).replace(/\//g, "\\"); // Remove "file:///" prefix and convert / to \\
+        const pathToUnsortedPortrayalByIndex = unsortedPortrayals.indexOf(pathToUnsortedPortrayal.toString());
+
+        // Sort and wipe
+        console.log(unsortedPortrayals[pathToUnsortedPortrayalByIndex]);
+        client.ask_sort_please(pathToUnsortedPortrayalByIndex, selectedTags, document.getElementById("originInputField").value, personaInputField.value);
+        unsortedPortrayals.splice(pathToUnsortedPortrayalByIndex, 1);
+        document.getElementById("ws_below").innerHTML = "";
+        document.getElementsByClassName("portrayal_element")[pathToUnsortedPortrayalByIndex].remove();
+    }
+}
+
+// function pressed_confirm_button_for_sorting() {
+//     const personaInputField = document.getElementById("personaInputField");
+//     if (personaInputField.value === "") {
+//         console.log("No persona selected");
+//     } else {
+//         console.log(`Persona selected: ${personaInputField.value} from ${document.getElementById("originInputField").value}`);
+//         for (const selectedTag of selectedTags) {
+//             console.log(selectedTag);
+//         }
+//         const pathToUnsortedPortrayal = document.getElementById("ws_below").firstChild.src;
+//         if (pathToUnsortedPortrayal === undefined) {
+//             console.log("No portrayal selected");
+//         } else {
+//             const pathToUnsortedPortrayalByIndex = unsortedPortrayals.indexOf(pathToUnsortedPortrayal);
+//             console.log(pathToUnsortedPortrayalByIndex);
+//             client.ask_sort_please(pathToUnsortedPortrayalByIndex, selectedTags, document.getElementById("originInputField").value, personaInputField.value);
+//             unsortedPortrayals.splice(pathToUnsortedPortrayalByIndex, 1);
+//             document.getElementsByClassName("portrayal_element")[pathToUnsortedPortrayalByIndex].remove();
+//         }
+//     }
+// }
+
+
+
+
+
+
 
 document.addEventListener("DOMContentLoaded", async function() {
     document.body.style.cursor = "wait";
@@ -118,7 +248,7 @@ document.addEventListener("DOMContentLoaded", async function() {
     await client.set_unsortedPortrayals();
 
     set_unsorted_panel();
-    set_tags_map_in_workspace();
-    set_origin_list();
+    add_tags_map_in_workspace();
+    add_origin_list();
     document.body.style.cursor = "default";
 });

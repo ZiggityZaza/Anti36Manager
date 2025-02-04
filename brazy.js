@@ -161,78 +161,6 @@ let selectedTags = [];
 
 
 
-function set_tags_map_in_workspace() {
-    const workspace = document.getElementById("ws_panel");
-    workspace.innerHTML = "";
-    const tagsMap = document.createElement("div");
-    tagsMap.id = "tags_map";
-
-    existingTags.forEach(tag => {
-        const tagElement = document.createElement("div");
-        tagElement.className = "tag";
-        tagElement.innerHTML = tag;
-        tagElement.onclick = () => {
-            const index = selectedTags.indexOf(tag);
-            if (index > -1) {
-                selectedTags.splice(index, 1);
-                tagElement.style.backgroundColor = "";
-            } else {
-                selectedTags.push(tag);
-                tagElement.style.backgroundColor = `#${Math.floor(Math.random() * 16777215).toString(16)}`;
-            }
-            console.log(selectedTags);
-        };
-        tagsMap.appendChild(tagElement);
-    });
-
-    workspace.appendChild(tagsMap);
-}
-
-
-
-function set_unsorted_panel() {
-    const unsortedListHeader = document.getElementById("uns_head");
-    unsortedListHeader.innerHTML = `${unsortedPortrayals.length} files in "$unsorted"`;
-
-    unsortedPortrayals.forEach(unsortedFPath => {
-        const fileExtension = unsortedFPath.split('.').pop().toLowerCase();
-        const isImage = ["jpg", "jpeg", "png", "gif", "bmp", "webp"].includes(fileExtension);
-        const isVideo = ["mp4", "webm", "mkv", "avi"].includes(fileExtension);
-
-        let display;
-        if (isImage) {
-            display = document.createElement("img");
-        } else if (isVideo) {
-            display = document.createElement("video");
-            display.muted = true;
-            display.loop = true;
-            display.addEventListener("mouseover", () => display.play());
-            display.addEventListener("mouseout", () => display.pause());
-        }
-
-        display.className = "uns_element";
-        display.src = unsortedFPath;
-        display.onclick = () => {
-            const workspaceMedia = isImage ? document.createElement("img") : document.createElement("video");
-            if (!isImage) workspaceMedia.setAttribute("controls", "controls");
-            workspaceMedia.src = unsortedFPath;
-            workspaceMedia.id = "ws_below";
-            document.getElementById("ws_below").innerHTML = workspaceMedia.outerHTML;
-
-            // add autoplay to video
-            if (!isImage) {
-                let video = document.getElementById("ws_below").firstChild;
-                video.autoplay = true;
-                video.muted = true;
-                video.loop = true;
-            }
-        };
-        document.getElementById("uns_elements").appendChild(display);
-    });
-}
-
-
-
 function ws_control_panel_confirmed() {
     console.log("Confirmed");
     let personaInputField = document.getElementById("personaInputField");
@@ -268,40 +196,6 @@ function ws_control_panel_confirmed() {
     }
 };
 
-
-
-function origin_selected(userInput) {
-    let personaInputField = document.getElementById("personaInputField");
-    personaInputField.value = "";
-    
-    // Set the persona list
-    if (anti36Local["Anti36Local"][userInput] !== undefined) {
-        let personaList = document.getElementById("persona_list");
-        personaList.innerHTML = "";
-        for (let persona in anti36Local["Anti36Local"][userInput]) {
-            let option = document.createElement("option");
-            option.value = persona;
-            personaList.appendChild(option);
-        }
-    }
-}
-
-
-
-function persona_selected(userInput) {
-    console.log(userInput);
-}
-
-
-
-function set_origin_list() {
-    let dataList = document.getElementById("origin_list");
-    for (let origin in anti36Local["Anti36Local"]) {
-        let option = document.createElement("option");
-        option.value = origin;
-        dataList.appendChild(option);
-    }
-}
 
 
 
