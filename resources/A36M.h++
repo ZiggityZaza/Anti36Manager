@@ -201,12 +201,6 @@ namespace Anti36Manager {
 
     // Other variables
     LocalServer localServer;
-    bool amIDynamicallyWorkingOnSomething = true;
-    /*
-      So the front-end keeps itself in a loop in which it constantly
-      checks if the program has finished the task so it can take the
-      next step which would rely on the correct information it asked for.
-    */
 
 
     // Helper methods (usually silent methods)
@@ -241,14 +235,6 @@ namespace Anti36Manager {
     }
     bool tag_exists(const char tag) {
       return TAGS_LOOKUP.find(tag) != TAGS_LOOKUP.end();
-    }
-
-
-
-    void wait_for_other_operations() {
-      while (amIDynamicallyWorkingOnSomething) {
-        std::this_thread::yield();
-      }
     }
 
 
@@ -853,16 +839,14 @@ namespace Anti36Manager {
         console << NEXT_METHOD;
 
 
-        #define CATCH_ERROR_CONTENT catch(const std::exception& e){res.set_content("{\"message\": \""+std::string(e.what())+"\"}",localServer.CONTENT_TYPE);console << OCCURANCE << "Error: " << e.what();}
+        #define CATCH_ERROR_CONTENT catch(const std::exception& e){res.set_content("{\"message\":\""+std::string(e.what())+"\"}",localServer.CONTENT_TYPE);console<<OCCURANCE<<"Error:"<<e.what();}
 
         localServer.server.Get("/", [this](const httplib::Request&, httplib::Response& res) {
           res.set_header("Access-Control-Allow-Origin", "*");
-          wait_for_other_operations();
           try {
             refresh();
             res.set_content("{\"message\": \"Cleared and re-added data\"}", localServer.CONTENT_TYPE);
           } CATCH_ERROR_CONTENT
-          amIDynamicallyWorkingOnSomething = false;
         });
 
 
@@ -896,7 +880,6 @@ namespace Anti36Manager {
           }*/
 
           res.set_header("Access-Control-Allow-Origin", "*");
-          wait_for_other_operations();
 
           try {
             nlohmann::json output;
@@ -916,8 +899,6 @@ namespace Anti36Manager {
             console << OCCURANCE << "\"/anti36local\" as GET";
             res.set_content(output.dump(), localServer.CONTENT_TYPE);
           } CATCH_ERROR_CONTENT
-
-          amIDynamicallyWorkingOnSomething = false;
         });
 
 
@@ -937,6 +918,7 @@ namespace Anti36Manager {
         });
 
 
+
         localServer.server.Get("/unsorted", [this](const httplib::Request&, httplib::Response& res) {
           /*
           ["E:\\$unsorted\\someImage.jpg","E:\\$unsorted\\someVideo.mp4",...
@@ -944,7 +926,6 @@ namespace Anti36Manager {
           */
 
           res.set_header("Access-Control-Allow-Origin", "*");
-          wait_for_other_operations();
 
           std::string output = "[";
           for (const cslib::VirtualPath& path : unsortedPortrayalsPaths) {
@@ -957,10 +938,10 @@ namespace Anti36Manager {
           }
           output += "]";
 
-          amIDynamicallyWorkingOnSomething = false;
           console << OCCURANCE << "\"/unsorted\" as GET";
           res.set_content(output, localServer.CONTENT_TYPE);
         });
+
 
 
         localServer.server.Post("/sort_please", [this](const httplib::Request& req, httplib::Response& res) {
@@ -976,7 +957,6 @@ namespace Anti36Manager {
           res.set_header("Access-Control-Allow-Origin", "*");
           console << OCCURANCE << "\"/sort_please\" as POST";
           
-
           try {
             nlohmann::json input = nlohmann::json::parse(req.body);
 
@@ -1006,8 +986,6 @@ namespace Anti36Manager {
             move_and_integrate_portrayal(currentLocationInUnsortedByIndex, persona, tags, INDEX_AUTO_INCREMENT_CODE);
             res.set_content("{\"message\": \"Moved and integrated the portrayal\"}", localServer.CONTENT_TYPE);
           } CATCH_ERROR_CONTENT
-
-          amIDynamicallyWorkingOnSomething = false;
         });
 
 
@@ -1032,8 +1010,6 @@ namespace Anti36Manager {
             console << OCCURANCE << "\"/current_portrayal_remix\" as GET";
             res.set_content(output, localServer.CONTENT_TYPE);
           } CATCH_ERROR_CONTENT
-
-          amIDynamicallyWorkingOnSomething = false;
         });
 
 
@@ -1083,12 +1059,11 @@ namespace Anti36Manager {
             put_together_portrayal_remix_by_filter();
             res.set_content("{\"message\": \"Here is the remix you asked for\"}", localServer.CONTENT_TYPE);
           } CATCH_ERROR_CONTENT
-
-          amIDynamicallyWorkingOnSomething = false;
         });
 
 
-        amIDynamicallyWorkingOnSomething = false;
+
+        console << NEXT_METHOD << "Starting local server";
         localServer.start();
       }
   };

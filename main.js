@@ -39,25 +39,10 @@ let filteredPortrayals = [];
 
 class Anti36Proxy {
     constructor() {}
-
     async fetchData(endpoint) {
         const response = await fetch(`http://localhost:8080/${endpoint}`, {method: 'GET'});
         return await response.json();
     }
-
-    async set_anti36Local() {
-        anti36Local = await this.fetchData("anti36local");
-    }
-    async set_existingTags() {
-        existingTags = await this.fetchData("existing_tags");
-    }
-    async set_unsortedPortrayals() {
-        unsortedPortrayals = await this.fetchData("unsorted");
-    }
-    async set_filteredPortrayals() {
-        filteredPortrayals = await this.fetchData("current_portrayal_remix");
-    }
-
     ask_sort_please(pathToUnsortedPortrayalByIndex, tags, origin, persona) {
         /*
             {
@@ -73,7 +58,7 @@ class Anti36Proxy {
             "persona": persona,
             "tags": tags
         };
-        fetch("http://localhost:8080/sort", {
+        fetch("http://localhost:8080/sort_please", {
             mode: 'no-cors',
             method: "POST",
             body: JSON.stringify(data),
@@ -97,7 +82,7 @@ class Anti36Proxy {
             "filterByTags": filterByTags,
             "filterByType": filterByType
         };
-        fetch("http://localhost:8080/remix", {
+        fetch("http://localhost:8080/current_portrayal_remix", {
             mode: 'no-cors',
             method: "POST",
             body: JSON.stringify(data),
@@ -138,7 +123,6 @@ function set_unsorted_panel() {
         document.getElementById("portrayal_elements").appendChild(display);
     });
 }
-
 
 
 
@@ -190,22 +174,16 @@ function add_tags_map_in_workspace() {
 }
 
 
-function pressed_confirm_button_for_sorting() {
+function pressed_confirm_button() {
     const personaInputField = document.getElementById("personaInputField");
-    if (personaInputField.value !== "") {
-        console.log(`Persona selected: ${personaInputField.value} from ${document.getElementById("originInputField").value}`);
-        const pathToUnsortedPortrayal = document.getElementById("ws_below").firstChild.src;
-        if (pathToUnsortedPortrayal === undefined) {
-            console.log("No portrayal selected");
-            return;
-        }
+    const pathToUnsortedPortrayal = document.getElementById("ws_below").firstChild.src;
+    if (personaInputField.value !== "" || pathToUnsortedPortrayal === undefined) {
 
-        // Set correct values
-        pathToUnsortedPortrayal = pathToUnsortedPortrayal.substring(8).replace(/\//g, "\\"); // Remove "file:///" prefix and convert / to \\
-        const pathToUnsortedPortrayalByIndex = unsortedPortrayals.indexOf(pathToUnsortedPortrayal.toString());
+        // Remove "file:///" prefix and convert / to \\ before finding index
+        const pathToUnsortedPortrayalByIndex = unsortedPortrayals.indexOf(
+            pathToUnsortedPortrayal.substring(8).replace(/\//g, "\\").toString()); // Special thanks to chatgpt
 
         // Sort and wipe
-        console.log(unsortedPortrayals[pathToUnsortedPortrayalByIndex]);
         client.ask_sort_please(pathToUnsortedPortrayalByIndex, selectedTags, document.getElementById("originInputField").value, personaInputField.value);
         unsortedPortrayals.splice(pathToUnsortedPortrayalByIndex, 1);
         document.getElementById("ws_below").innerHTML = "";
@@ -213,42 +191,17 @@ function pressed_confirm_button_for_sorting() {
     }
 }
 
-// function pressed_confirm_button_for_sorting() {
-//     const personaInputField = document.getElementById("personaInputField");
-//     if (personaInputField.value === "") {
-//         console.log("No persona selected");
-//     } else {
-//         console.log(`Persona selected: ${personaInputField.value} from ${document.getElementById("originInputField").value}`);
-//         for (const selectedTag of selectedTags) {
-//             console.log(selectedTag);
-//         }
-//         const pathToUnsortedPortrayal = document.getElementById("ws_below").firstChild.src;
-//         if (pathToUnsortedPortrayal === undefined) {
-//             console.log("No portrayal selected");
-//         } else {
-//             const pathToUnsortedPortrayalByIndex = unsortedPortrayals.indexOf(pathToUnsortedPortrayal);
-//             console.log(pathToUnsortedPortrayalByIndex);
-//             client.ask_sort_please(pathToUnsortedPortrayalByIndex, selectedTags, document.getElementById("originInputField").value, personaInputField.value);
-//             unsortedPortrayals.splice(pathToUnsortedPortrayalByIndex, 1);
-//             document.getElementsByClassName("portrayal_element")[pathToUnsortedPortrayalByIndex].remove();
-//         }
-//     }
-// }
-
-
-
-
 
 
 
 document.addEventListener("DOMContentLoaded", async function() {
     document.body.style.cursor = "wait";
-    await client.set_anti36Local();
-    await client.set_existingTags();
-    await client.set_unsortedPortrayals();
+    anti36Local = await client.fetchData("anti36local");
+    existingTags = await client.fetchData("existing_tags");
+    unsortedPortrayals = await client.fetchData("unsorted");
 
     set_unsorted_panel();
     add_tags_map_in_workspace();
-    add_origin_list();
+    add_origin_datalist();
     document.body.style.cursor = "default";
 });
