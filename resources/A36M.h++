@@ -57,14 +57,9 @@ static constexpr const char* ASCII_ART = R"(
 // Next: https://patorjk.com/software/taag/#p=display&h=3&v=3&f=NScript&t=Anti36Manager%20v1.4
 
 #include "a36mtagmap.hpp"
-#include "cslib.h++" // Custom library for Anti36Manager
-#include <unordered_map> // Faster lookups
-#include <filesystem> // Manipulating and reading files and folders in the Anti36Local folder
-#include <algorithm> // Finding elements in a container
-#include <iostream> // Printing out messages and std::string (and everything that comes with it)
-#include <fstream> // Generating html file
-#include <cstdint> // Cooler numbers (small numbers supported by stl)
-#include <deque> // Containers with continuous memory addresses
+#include "cslib.h++" // Custom library for Anti36Manager and contains all used libraries
+
+
 
 
 
@@ -836,7 +831,6 @@ namespace Anti36Manager {
         full_duplicate_index_fix();
         console << NEXT_METHOD;
         full_index_gaps_fix();
-        console << NEXT_METHOD;
 
 
         #define CATCH_ERROR_CONTENT catch(const std::exception& e){res.set_content("{\"message\":\""+std::string(e.what())+"\"}",localServer.CONTENT_TYPE);console<<OCCURANCE<<"Error:"<<e.what();}

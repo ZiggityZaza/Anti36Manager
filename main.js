@@ -39,9 +39,17 @@ let filteredPortrayals = [];
 
 class Anti36Proxy {
     constructor() {}
-    async fetchData(endpoint) {
+    async fetch_data(endpoint) {
         const response = await fetch(`http://localhost:8080/${endpoint}`, {method: 'GET'});
         return await response.json();
+    }
+    async send_data(endpoint, data) {
+        fetch(`http://localhost:8080/${endpoint}`, {
+            mode: 'no-cors',
+            method: "POST",
+            body: JSON.stringify(data),
+            headers: {"Content-Type": "application/json"}
+        });
     }
     ask_sort_please(pathToUnsortedPortrayalByIndex, tags, origin, persona) {
         /*
@@ -52,20 +60,14 @@ class Anti36Proxy {
               "tags": ["_A", "_B", "_C", "_D"]
             }
         */
-        const data = {
+        this.send_data("sort_please", {
             "currentLocationInUnsortedByIndex": pathToUnsortedPortrayalByIndex,
             "origin": origin,
             "persona": persona,
             "tags": tags
-        };
-        fetch("http://localhost:8080/sort_please", {
-            mode: 'no-cors',
-            method: "POST",
-            body: JSON.stringify(data),
-            headers: {"Content-Type": "application/json"}
         });
     }
-    ask_remix_please(filterByPersonas = {}, filterByTags = [], filterByType = "") {
+    ask_current_portrayal_remix(filterByPersonas = {}, filterByTags = [], filterByType = "") {
         /*
             {
               "filterByPersonas": {
@@ -77,16 +79,10 @@ class Anti36Proxy {
               "filterByType": "Image" (or "Video" for vids, "" for both)
             }
         */
-        const data = {
+        this.send_data("current_portrayal_remix", {
             "filterByPersonas": filterByPersonas,
             "filterByTags": filterByTags,
             "filterByType": filterByType
-        };
-        fetch("http://localhost:8080/current_portrayal_remix", {
-            mode: 'no-cors',
-            method: "POST",
-            body: JSON.stringify(data),
-            headers: {"Content-Type": "application/json"}
         });
     }
 }
@@ -196,9 +192,9 @@ function pressed_confirm_button() {
 
 document.addEventListener("DOMContentLoaded", async function() {
     document.body.style.cursor = "wait";
-    anti36Local = await client.fetchData("anti36local");
-    existingTags = await client.fetchData("existing_tags");
-    unsortedPortrayals = await client.fetchData("unsorted");
+    anti36Local = await client.fetch_data("anti36local");
+    existingTags = await client.fetch_data("existing_tags");
+    unsortedPortrayals = await client.fetch_data("unsorted");
 
     set_unsorted_panel();
     add_tags_map_in_workspace();

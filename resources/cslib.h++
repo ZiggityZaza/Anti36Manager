@@ -2,15 +2,15 @@
 #define LOCAL_SERVER_H
 #endif
 
-#include <functional>
-#include <filesystem>
-#include <iostream>
-#include <fstream>
-#include <cstdint>
+#include <unordered_map> // Faster lookups
+#include <filesystem> // Finding and moving files and folders in the Anti36Local folder
+#include <algorithm> // Finding elements in a container
+#include <iostream> // Printing out messages and std::string (and everything else that comes with it)
+#include <fstream> // Logging
+#include <cstdint> // Cooler numbers (small numbers supported by stl)
 #include <chrono>
-#include <thread>
-#include <mutex>
-#include <deque>
+#include <deque> // Containers with continuous memory addresses
+
 #include "httplib.h"
 #include "json.hpp"
 
