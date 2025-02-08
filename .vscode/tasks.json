@@ -10,6 +10,8 @@
                 "${file}",
                 "-o",
                 "${fileDirname}\\${fileBasenameNoExtension}.exe",
+                "-Wall",
+                "-Wextra",
                 "-lws2_32",
                 "-lssl",
                 "-lcrypto",

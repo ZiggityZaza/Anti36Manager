@@ -18,12 +18,12 @@
         </div>
         <div id="ws_control_panel">
             <div id="ws_control_panel_add_button" onclick="pressed_confirm_button()">Confirm</div>
-            <div id="ws_control_panel_switch_button">Switch to sorting/filtering</div>
+            <div id="ws_control_panel_switch_button" onclick="switch_mode()">Switch to sorting/filtering</div>
         </div>
         <div id="ws_input_panel">
             <input list="origin_list" name="origin" id="originInputField" onchange="set_persona_datalist(this.value)" placeholder="Select an origin here">
             <datalist id="origin_list"><!-- All origins --></datalist>
-            <input list="persona_list" name="persona" id="personaInputField" placeholder="The persona from that origin">
+            <input list="persona_list" name="persona" id="personaInputField" onchange="make_sure_personaInputField_valid()" placeholder="The persona from that origin">
             <datalist id="persona_list"><!-- it's personas --></datalist>
         </div>
 

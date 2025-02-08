@@ -41,7 +41,7 @@ namespace cslib { // Jack of all trades (Helper functions and classes)
     static std::string unescape_string(const std::string &escapedString) {
 
       std::string result;
-      for (uint8_t i = 0; i < escapedString.length(); ++i) {
+      for (size_t i = 0; i < escapedString.length(); ++i) {
         if (escapedString[i] == '\\') {
           if (i + 1 < escapedString.length()) {
             switch (escapedString[i + 1]) {
@@ -64,7 +64,7 @@ namespace cslib { // Jack of all trades (Helper functions and classes)
     }
     static std::string escape_string(const std::string &str) {
       std::string result;
-      for (char c : str) {
+      for (unsigned char c : str) {
         switch (c) {
           case '\n': result += "\\n"; break;
           case '\t': result += "\\t"; break;
@@ -106,7 +106,7 @@ namespace cslib { // Jack of all trades (Helper functions and classes)
           return result;
         }
 
-        for (char c : str) {
+        for (unsigned char c : str) {
             if (c == delimiter) {
                 result.push_back(temp);
                 temp.clear();
@@ -189,7 +189,7 @@ namespace cslib { // Jack of all trades (Helper functions and classes)
   class TimeStamp {
     // Specialized replacement for std::chrono::system_clock::time_point
     public:
-      enum Weekday : char {
+      enum Weekday : unsigned char {
         MONDAY = 'M',
         TUESDAY = 'U', // U for tUesday
         WEDNESDAY = 'W',
