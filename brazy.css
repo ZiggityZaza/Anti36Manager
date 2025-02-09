@@ -133,7 +133,19 @@ body {
             border-radius: 10px;
             color: white;
             background-color: rgb(70, 69, 74);
-    }
+        }
+        #typeInputField {
+            display: inline;
+            transition: background-color 1s;
+            margin-bottom: 1vh;
+            padding: 1vh;
+            width: 100%;
+            font-size: 100%;
+            border-radius: 10px;
+            color: white;
+            background-color: rgb(70, 69, 74);
+            cursor: not-allowed;
+}
 
     #ws_below_head {
         display: block;

@@ -123,7 +123,7 @@ async function switch_mode() {
 
 
 // Set left panel values
-function set_unsorted_panel() {
+async function set_unsorted_panel() {
     document.getElementById("portrayal_elements").innerHTML = "";
     const unsortedListHeader = document.getElementById("portrayal_previews_title");
     unsortedListHeader.innerHTML = `${unsortedPortrayals.length} files in "$unsorted"`;
@@ -208,41 +208,24 @@ function add_origin_datalist() {
 }
 
 
-function set_persona_datalist(origin) {
+function set_persona_datalist(writtenOrigin) {
     const dataList = document.getElementById("persona_list");
     dataList.innerHTML = "";
     document.getElementById("personaInputField").value = "";
-
-    if (anti36Local["Anti36Local"][origin] !== undefined) {
-        for (const persona in anti36Local["Anti36Local"][origin]) {
-            const option = document.createElement("option");
-            option.value = persona;
-            dataList.appendChild(option);
-        }
-    } else {
-        alert("Origin doesn't exist.");
+    for (const persona in anti36Local["Anti36Local"][origin]) {
+        const option = document.createElement("option");
+        option.value = persona;
+        dataList.appendChild(option);
     }
 }
 
-function make_sure_personaInputField_valid(writtenPersona) {
-    const originInputField = document.getElementById("originInputField").value;
-    if (anti36Local["Anti36Local"][originInputField] === undefined) {
-        alert("Origin itself doesn't exist. Enter correct origin.");
+
+function personaInputField_valid(writtenPersona) {
+    if (anti36Local["Anti36Local"][document.getElementById("originInputField").value][writtenPersona] === undefined) {
+        alert("No persona to that origin exists");
         document.getElementById("personaInputField").value = "";
-    } else if (anti36Local["Anti36Local"][originInputField][writtenPersona] === undefined) {
-        alert("Origin exists but persona doesn't. Enter correct persona.");
+        document.getElementById("originInputField").value = "";
     }
-    document.getElementById("personaInputField").value = "";
-    // let existsInAnti36Local = false;
-    // if (anti36Local["Anti36Local"][originInputField] !== undefined) {
-    //     if (anti36Local["Anti36Local"][originInputField][writtenPersona] !== undefined) {
-    //         existsInAnti36Local = true;
-    //     }
-    // }
-    // if (originInputField === "" || originInputField === undefined) {
-    //     alert("I need to know which persona you're referring to. Enter correct origin.");
-    //     document.getElementById("personaInputField").value = "";
-    // }
 }
 
 
@@ -256,7 +239,7 @@ function add_tags_map_in_workspace() {
         tagElement.innerHTML = tag;
         tagElement.onclick = () => {
             if (selectedTags.includes(tag)) {
-                selectedTags = selectedTags.filter(t => t !== tag); // lambda function to remove tag from selectedTags
+                selectedTags = selectedTags.filter(t => t !== tag); // if t ain't tag keep it
                 tagElement.style.backgroundColor = "";
             } else {
                 selectedTags.push(tag);
@@ -269,42 +252,25 @@ function add_tags_map_in_workspace() {
 
 
 function pressed_confirm_button() {
-    const personaInputField = document.getElementById("personaInputField");
+    const personaInputFieldValue = document.getElementById("personaInputField").value;
     const pathToUnsortedPortrayal = document.getElementById("ws_below").firstChild.src;
 
-    if (personaInputField.value !== "") {
-        alert("Please select a persona0.");
+    if (anti36Local["Anti36Local"][document.getElementById("originInputField").value][personaInputFieldValue] === undefined) {
+        alert("Persona doesn't exist.");
         return;
     }
-        
-    if (personaInputField.value !== undefined) {
-        alert("Please select a persona1.");
-        return;
-    }
-        
-    if (pathToUnsortedPortrayal !== "") {
-        alert("Please select a persona2.");
+    else if (pathToUnsortedPortrayal === undefined) {
+        alert("No portrayal selected.");
         return;
     }
 
-    if (pathToUnsortedPortrayal !== undefined) {
-        alert("Please select a persona3.");
-        return;
-    }
-
-    if (personaInputField.value !== "" && personaInputField.value !== undefined && pathToUnsortedPortrayal !== "" && pathToUnsortedPortrayal !== undefined) {
-        // Remove "file:///" prefix and convert / to \\ before finding index
-        const pathToUnsortedPortrayalByIndex = unsortedPortrayals.indexOf(
-            pathToUnsortedPortrayal.substring(8).replace(/\//g, "\\").toString()); // Special thanks to chatgpt
-
-        // Sort and wipe
-        client.ask_sort_please(pathToUnsortedPortrayalByIndex, selectedTags, document.getElementById("originInputField").value, personaInputField.value);
-        unsortedPortrayals.splice(pathToUnsortedPortrayalByIndex, 1);
-        document.getElementById("ws_below").innerHTML = "";
-        document.getElementsByClassName("portrayal_element")[pathToUnsortedPortrayalByIndex].remove();
-    } else {
-        alert("Please select a persona.");
-    }
+    // Remove "file:///" prefix and convert / to \\ before finding index
+    const pathToUnsortedPortrayalByIndex = unsortedPortrayals.indexOf(
+        pathToUnsortedPortrayal.substring(8).replace(/\//g, "\\").toString()); // Special thanks to chatgpt
+    client.ask_sort_please(pathToUnsortedPortrayalByIndex, selectedTags, document.getElementById("originInputField").value, personaInputFieldValue);
+    unsortedPortrayals.splice(pathToUnsortedPortrayalByIndex, 1);
+    document.getElementById("ws_below").innerHTML = "";
+    document.getElementsByClassName("portrayal_element")[pathToUnsortedPortrayalByIndex].remove();
 }
 
 
