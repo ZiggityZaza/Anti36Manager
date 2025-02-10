@@ -172,7 +172,6 @@ class Main {
   std::deque<cslib::VirtualPath> unsortedPortrayalsPaths;
 
   // Containers for easy access
-  std::unordered_map<Origin*, std::deque<Portrayal*>> portrayalsByOrigin;
   std::unordered_map<Origin*, std::deque<Persona*>> personasByOrigin;
   std::unordered_map<Persona*, std::deque<Portrayal*>> portrayalsByPersona;
   std::unordered_map<char, std::deque<Portrayal*>> portrayalsByTag;
@@ -481,21 +480,16 @@ class Main {
     
     console << "Sorting portrayals";
 
-
     console << SUBLINE << "Resetting the byXYContainers";
-    portrayalsByOrigin.clear();
     portrayalsByPersona.clear();
     portrayalsByTag.clear();
     portrayalsByType.clear();
     personasByOrigin.clear();
 
-
-    console << SUBLINE << "Configuring portrayals/personas by origin";
+    console << SUBLINE << "Configuring personas by origin";
     for (Origin& origin : origins) {
-      portrayalsByOrigin[&origin] = {};
       personasByOrigin[&origin] = {};
     }
-
 
     console << SUBLINE << "Configuring portrayals/origins by persona";
     for (Persona& persona : personas) {
@@ -503,23 +497,19 @@ class Main {
       personasByOrigin[origin_exists(persona.origin->name)].push_back(&persona);
     }
 
-
     console << SUBLINE << "Configuring portrayals by tag";
     for (TAG_COMBINATIONS) {
       portrayalsByTag[tagAsChar] = {};
     }
     console << " (" << portrayalsByTag.size() << " tags)";
 
-
     console << SUBLINE << "Configuring portrayals by type";
     portrayalsByType[IMAGE] = {};
     portrayalsByType[VIDEO] = {};
     console << " (" << portrayalsByType.size() << " types)";
 
-
     console << SUBLINE << "Adding portrayals to the maps";
     for (Portrayal& portrayal : portrayals) {
-      portrayalsByOrigin[origin_exists(portrayal.persona->origin->name)].push_back(&portrayal);
       portrayalsByPersona[persona_exists(portrayal.persona->name, portrayal.persona->origin)].push_back(&portrayal);
       for (char tag : portrayal.tags) {
         portrayalsByTag[tag].push_back(&portrayal);
@@ -656,7 +646,6 @@ class Main {
     unsortedPortrayalsPaths.clear();
     console << SUBLINE << "Cleared all the pillar containers";
 
-    portrayalsByOrigin.clear();
     portrayalsByPersona.clear();
     portrayalsByTag.clear();
     portrayalsByType.clear();
@@ -736,7 +725,6 @@ class Main {
 
     portrayals.push_back({index, persona, tags, &files.back()});
     portrayalsByPersona[persona].push_back(&portrayals.back());
-    portrayalsByOrigin[origin_exists(persona->origin->name)].push_back(&portrayals.back());
     for (char tag : tags) {
       portrayalsByTag[tag].push_back(&portrayals.back());
     }
@@ -779,7 +767,6 @@ class Main {
     filteredPortrayals.clear();
 
     for (Portrayal& portrayal : portrayals) {
-      console << SUBLINE << "Checking portrayal " << portrayal.where->filename();
       if (cslib::do_these_deques_have_something_in_similar(filterByTags, portrayal.tags)) {
         filteredPortrayals.push_back(&portrayal);
         continue;
@@ -989,14 +976,31 @@ class Main {
         */
         res.set_header("Access-Control-Allow-Origin", "*");
 
+        std::unordered_map<Persona*, std::deque<Portrayal*>> filteredPortrayalsSortedTempMap;
+        for (Portrayal* portrayal : filteredPortrayals) {
+          filteredPortrayalsSortedTempMap[persona_exists(portrayal->persona->name, portrayal->persona->origin)].push_back(portrayal);
+        }
+
+        std::deque<Portrayal*> filteredPortrayalsSortedByIndex;
+        for (const auto& [persona, itsPortrayals] : filteredPortrayalsSortedTempMap) {
+          for (size_t index = 1; index <= itsPortrayals.size(); ++index) {
+            for (Portrayal* portrayal : itsPortrayals) {
+              if (portrayal->index == index) {
+                filteredPortrayalsSortedByIndex.push_back(portrayal);
+                break;
+              }
+            }
+          }
+        }
+
         std::string output = "[";
         try {
-          for (Portrayal* portrayal : filteredPortrayals) {
+          for (Portrayal* portrayal : filteredPortrayalsSortedByIndex) {
             output += '"';
             output += cslib::escape_string(portrayal->where->path);
             output += "\",";
           }
-          if (!filteredPortrayals.empty()) {
+          if (!filteredPortrayalsSortedByIndex.empty()) {
             output.pop_back();
           }
           output += "]";
@@ -1054,7 +1058,7 @@ class Main {
         } CATCH_ERROR_CONTENT
       });
 
-
+      
 
       console << NEXT_METHOD << "Starting local server";
       localServer.start();

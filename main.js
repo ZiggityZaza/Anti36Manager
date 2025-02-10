@@ -85,24 +85,6 @@ class Anti36Proxy {
             "filterByType": filterByType
         });
     }
-    async ask_current_portrayal_remix(filterByPersonas = {}, filterByTags = [], filterByType = "") {
-        /*
-            {
-              "filterByPersonas": {
-                "Origin 1": ["Persona 1", "Persona 2",...],
-                "Origin 2": ["Persona 1", "Persona 2",...],
-                ...
-            },
-              "filterByTags": ["_A", "_B", "_C", "_D",...],
-              "filterByType": "Image" (or "Video" for vids, "" for both)
-            }
-        */
-        await this.send_data("current_portrayal_remix", {
-            "filterByPersonas": filterByPersonas,
-            "filterByTags": filterByTags,
-            "filterByType": filterByType
-        });
-    }
 }
 
 const client = new Anti36Proxy();
