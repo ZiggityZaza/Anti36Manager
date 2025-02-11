@@ -140,7 +140,7 @@ async function set_sorted_panel() {
     const sortedListHeader = document.getElementById("portrayal_previews_title");
     sortedListHeader.innerHTML = `${filteredPortrayals.length} files in "Anti36Local"`;
 
-    await client.tell_filters({}, ["_C"], "");
+    await client.tell_filters({}, selectedTags, "");
     filteredPortrayals = await client.fetch_data("current_portrayal_remix");
 
     filteredPortrayals.forEach(sortedFPath => {
@@ -194,7 +194,7 @@ function set_persona_datalist(writtenOrigin) {
     const dataList = document.getElementById("persona_list");
     dataList.innerHTML = "";
     document.getElementById("personaInputField").value = "";
-    for (const persona in anti36Local["Anti36Local"][origin]) {
+    for (const persona in anti36Local["Anti36Local"][writtenOrigin]) {
         const option = document.createElement("option");
         option.value = persona;
         dataList.appendChild(option);

@@ -214,6 +214,15 @@ class Main {
     }
     return &PERSONA_ERROR_TYPE;
   }
+  Portrayal PORTRAYAL_ERROR_TYPE = {0, &PERSONA_ERROR_TYPE, {}, nullptr};
+  Portrayal* portrayal_exists(const index_t index, const Persona *const desecendingPersona) {
+    for (Portrayal& portrayal : portrayals) {
+      if (portrayal.index == index and (portrayal.persona == desecendingPersona)) {
+        return &portrayal;
+      }
+    }
+    return &PORTRAYAL_ERROR_TYPE;
+  }
 
 
 
@@ -592,10 +601,12 @@ class Main {
         continue;
       }
 
+      // TODO: Wasn't tested in a long time. std::sort might not work with the Portrayal struct
       std::deque<Portrayal*> sortedByIndexPortrayals = itsPortrayals;
-      std::sort(sortedByIndexPortrayals.begin(), sortedByIndexPortrayals.end(), [](Portrayal* a, Portrayal* b) {
+      std::function<bool(Portrayal*, Portrayal*)> sortFunction = [](Portrayal* a, Portrayal* b) {
         return a->index < b->index;
-      });
+      };
+      std::sort(sortedByIndexPortrayals.begin(), sortedByIndexPortrayals.end(), sortFunction);
 
 
       index_t nextExpectedIndex = 1;
@@ -983,11 +994,16 @@ class Main {
 
         std::deque<Portrayal*> filteredPortrayalsSortedByIndex;
         for (const auto& [persona, itsPortrayals] : filteredPortrayalsSortedTempMap) {
-          for (size_t index = 1; index <= itsPortrayals.size(); ++index) {
+          size_t highestIndex = 0;
+          for (Portrayal* portrayal : itsPortrayals) {
+            if (portrayal->index > highestIndex) {
+              highestIndex = portrayal->index;
+            }
+          }
+          for (index_t index = 1; index <= highestIndex; ++index) {
             for (Portrayal* portrayal : itsPortrayals) {
               if (portrayal->index == index) {
                 filteredPortrayalsSortedByIndex.push_back(portrayal);
-                break;
               }
             }
           }
