@@ -1,48 +1,3 @@
-// :::..................:..........:::-=-:::::.........:.:-:::::=:--+=---
-// ::::.................:.........:##%#%%%#-::.:::::::::::-::::-=-=-=-::-
-// ::::.....:..........::.......:#%%%%%%%%%%=:::::::::::::-::::-+=-===+**
-// ::::.....:..........::.......+%%@%@@@@@%%%*::::::::::::--:::-+--=*+=+*
-// :::::....:..........::......:+%##%%%%%@@%@%-:::::::::::--:::=*-=+===+*
-// :::::....:.........:::.....::*#%%%#*****#@*::::::::::::---:-=*-=+++=+*
-// :::::....:.........::::..:::-##%%%%%@@@%%+:::::::::::::-----+*-=++==+*
-// :::::....:......:##*+-:::::::+***##*%@@%%*:::::::::::::-----+*-=*===+*
-// :::::....:.....#%%@@%%%%@@@@@%#***###*##+:::::::::::::------+*-+*===+*
-// :::::....:...:%@@@@@@@@@@@@@@%########*:::::::::::::::------*+-+*===+*
-// :::::....:..=%@@@@@@@@@@@@@@@%#######-::::::::::::::::------*+-+*===+*
-// :::::...::.=@@@@@@@@@@@@@@@@@@@%%%%@@%%=::::::::::::::-=----*+-+*===+*
-// :--::...::+@@@@@@@@@@@@@@@@@@@@%%@@%@%%%%=:----:::::::-=----*=-+*+=++*
-// ----::.::=@@@@@@@@@@@@@@@@@@@@@@%%#@@@@%%%#---:::::::--=----*=-**+=++*
-// ----:::::@@@@@@@@@@@@@@@@@@@@@@@%#%%@@@@@@%------:::---=---=*=-*#++++*
-// -----:::#@@@@@@@@@@@@@*==+%%@@@@##@@@@@@@@+------------=---=#==*#+++=*
-// -----::=@%@#.:@@@+::@@@+****#--*@@@+*+#@@**%+----------==--=#=-**++++*
-// ===--=.#.-#:#@%@@:@@@@@=#%+#*+*%@@@=@+#*%+@+#+%--------==--+#==**+++++
-// ===-::-.:@.+:@:@@@+-@@@@@@@%#%###@@=+@##%*#%+#---------==--+#==**+++++
-// ==+#+-@..*#%@%@@@@@@@@@@@@@@@@@@@@@@@@@@%+-*+%#%@@%%*--==--+#==#+++++*
-// **##+-@@@@@@@@@@@@@@@@@@@@@@@%@@@@@@@@@@@@@@@@@@@%%@@@#==-=*#==#+++++*
-// ++**+-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@%%@@%===*#=+#+++++*
-// ++#%+-#@@@@@@@@@@@@@@@@@@@@@@%@@@@@@@@@@@@@@%%%%%@@@@@@@%==##=+#=*+++*
-// ++%%+--@@@@@@@@@@@@@@@@@@@@@@@%@@@#@@@@@@@%%%%%%%@@@@%#%@*=#*=*#=*+++*
-// ++%%+--*@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@%%%%%%%%%%%##%%==%*=*#=*++++
-// +*%%+--%@@@@@@@@@@@@@@@@@@@@@@%%@@@%%%@%%%%%%%%#%%%##*#+===%*=##=*++++
-// +*%#+-*@@@@@@@@@@@@@@@@@@@@@@@@@@@%%%%%%%##%%%%%%%***#====+%+=%#=***++
-// +*@#+=@@@@@@@@@@@@@@@@@@%%######%%%%%#########%%#*+*#=====+#+=%#=*=+**
-// +*@*+%@@@@@@@@@@@@@@@%%%%%%%%%##%%#############**+*#======+%+*%*=***++
-// +*@**@@@@@@@@@@@@@@@@@%%%%%%%%%%%#%#####%%%%##++=**=======*#==%+=+++**
-// +*@*@@@@@@@@@@@@@@@@@@@#%%%%%%%%############**=*#*=====+==*#==%+==+=++
-// +#@*@@@@@@@@@@@@@@@@@@@#**#*#%%##%%%@@@@%%%*++##*======+++**=+%+==+==+
-// +#@%@@@@@@@@@@@@@@@@@@%%####+*#%@@@%%%%%%%########*====+++#*=+#+==+=+=
-// +#@%%%%%%%%%%%@@%@%@@@%%%%####%@%%%%%%%%%%############++++#*+**===+=+=
-// -++=++++******####%%%%########%#%%%%#####%%%%%%######+=+++#*+**=++=++=
-// -=::::::::::::::------=*%%@%%%%%%%%%%%#%%#%%%%%%##*====+++#*+#*++**++*
-// -=+#*----:::::::::::::::-=*%%%%#%%%%%%%%%%%%%%%%%%=====+++#*+#*++****#
-// --------------------------==+*%%%%####%%%%%%#%%%%%+====++*%++##++*+**#
-// AAAAAAÂÂÂÂÂÂÁÁÁÀÄÄÄHHHHH! Around 50 years ago, when I started my first
-// education, Mike Mizwalksi introduced me to these paintings. The one of
-// the top over there, viewer discretion is advised, Mike Kowalski would
-// puncturate one special sound as I exited my mother's front.
-// Stay silent if you would like to hear...
-
-
 // Previous: https://patorjk.com/software/taag/#p=display&h=3&v=3&f=Small%20Keyboard&t=Anti36Manager%20v1.2
 // https://patorjk.com/software/taag/#p=display&h=3&v=3&f=Slant&t=Anti36Manager%20v1.3
 static constexpr const char* ASCII_ART = R"(
@@ -75,20 +30,15 @@ namespace Anti36Manager {
 // This namespace contains all the necessary classes, variables and whatnot for the A36M
 
 // Console styling
-static constexpr const char* NEXT_METHOD ="\n\n >> "; // Entering new section
-static constexpr const char* OCCURANCE =    "\n >> "; // Standalone operation
-static constexpr const char* SUBLINE =      "\n  > "; // Next operation inside a method
-static constexpr const char* SUBSUBLINE =   "\n   > "; // Iteration inside a loop inside a method
-static constexpr const char* SUBSUBSUBLINE ="\n    > "; // Another iteration in...
+#define NEXT_METHOD ="\n\n >> "; // Entering new section
+#define OCCURANCE =    "\n >> "; // Standalone operation
+#define SUBLINE =      "\n  > "; // Next operation inside a method
+#define SUBSUBLINE =   "\n   > "; // Iteration inside a loop inside a method
+#define SUBSUBSUBLINE ="\n    > "; // Another iteration in...
 
 // Default values and Configs
 cslib::DualOutput console("F:\\log.txt");
 using index_t = unsigned short;
-static constexpr char WELCOME_SCREEN_SORTING_OPTION = '0';
-static constexpr char WELCOME_SCREEN_VIEWING_OPTION = '1';
-static constexpr char WELCOME_SCREEN_SUMMARY_OPTION = '2';
-static constexpr char WELCOME_SCREEN_LEAVING_OPTION = '3';
-static constexpr char WELCOME_SCREEN_ERROR_OPTION = -1;
 
 enum MediaType : char {
   IMAGE = 'I',
@@ -217,7 +167,7 @@ class Main {
   Portrayal PORTRAYAL_ERROR_TYPE = {0, &PERSONA_ERROR_TYPE, {}, nullptr};
   Portrayal* portrayal_exists(const index_t index, const Persona *const desecendingPersona) {
     for (Portrayal& portrayal : portrayals) {
-      if (portrayal.index == index and (portrayal.persona == desecendingPersona)) {
+      if (portrayal.index == index and portrayal.persona == desecendingPersona) {
         return &portrayal;
       }
     }
@@ -279,7 +229,7 @@ class Main {
         console << "a folder";
       }
 
-      else {
+      else if (entry.type == cslib::VirtualPath::FILE) {
         files.push_back(entry);
         console << "a file";
       }
@@ -857,7 +807,6 @@ class Main {
         "Anti36Local": {
           "Origin 1": {
             "Persona 1": {
-              0: null, (this is always null as the key is the index)
               1: {
                 path: "E:\\Anti36Local\\Origin 1\\Persona 1\\1_ABCD_.jpg",
                 tags: ["_A", "_B", "_C", "_D_"]
@@ -1019,8 +968,8 @@ class Main {
           }
         }
 
-        std::string output = "[";
         try {
+          std::string output = "[";
           for (Portrayal* portrayal : filteredPortrayalsSortedByIndex) {
             output += '"';
             output += cslib::escape_string(portrayal->where->path);
@@ -1088,6 +1037,7 @@ class Main {
 
       console << NEXT_METHOD << "Starting local server";
       localServer.start();
+      console << ASCII_ART;
     }
 };
 };
