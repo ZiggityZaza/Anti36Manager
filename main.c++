@@ -802,6 +802,16 @@ class Main {
         }
       }
     }
+
+    // Remove the portrayals that don't match the filterByTag
+    if (!filterByTags.empty() and !filteredPortrayals.empty()) {
+      for (size_t posInDeque; posInDeque < filteredPortrayals.size(); ++posInDeque) {
+        if (!cslib::do_these_deques_have_something_in_similar(filterByTags, filteredPortrayals[posInDeque]->tags)) {
+          filteredPortrayals.erase(filteredPortrayals.begin() + posInDeque);
+          --posInDeque;
+        }
+      }
+    }
   }
 
 

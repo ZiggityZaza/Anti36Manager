@@ -9,7 +9,7 @@
                 "-g",
                 "${file}",
                 "-o",
-                "${fileDirname}\\${fileBasenameNoExtension}.exe",
+                "${fileDirname}\\..\\${fileBasenameNoExtension}.exe",
                 "-Wall",
                 "-Wextra",
                 "-lws2_32",

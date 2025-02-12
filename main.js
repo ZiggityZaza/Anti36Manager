@@ -99,6 +99,9 @@ async function switch_mode() {
     isSortingMode = !isSortingMode;
     document.body.style.cursor = "wait";
     await set_left_panel();
+    document.getElementById("typeInputField").disabled = isSortingMode;
+    // Disable not allowed cursor
+    document.getElementById("typeInputField").style.cursor = isSortingMode ? "not-allowed" : "text";
     document.body.style.cursor = "default";
 }
 
@@ -135,12 +138,15 @@ async function set_unsorted_panel() {
 }
 
 
+let selectedTypeFilter = "";
+let selectedOriginFilters = {};
+
 async function set_sorted_panel() {
     document.getElementById("portrayal_elements").innerHTML = "";
     const sortedListHeader = document.getElementById("portrayal_previews_title");
     sortedListHeader.innerHTML = `${filteredPortrayals.length} files in "Anti36Local"`;
 
-    await client.tell_filters({}, selectedTags, "");
+    await client.tell_filters(selectedOriginFilters, selectedTags, selectedTypeFilter);
     filteredPortrayals = await client.fetch_data("current_portrayal_remix");
 
     filteredPortrayals.forEach(sortedFPath => {
@@ -207,7 +213,9 @@ function personaInputField_valid(writtenPersona) {
         alert("No persona to that origin exists");
         document.getElementById("personaInputField").value = "";
         document.getElementById("originInputField").value = "";
+        return false;
     }
+    return true;
 }
 
 
@@ -235,24 +243,62 @@ function add_tags_map_in_workspace() {
 
 function pressed_confirm_button() {
     const personaInputFieldValue = document.getElementById("personaInputField").value;
-    const pathToUnsortedPortrayal = document.getElementById("ws_below").firstChild.src;
+    if (!isSortingMode) {
+        console.log("putting together remix filters");
+        if (personaInputField_valid(personaInputFieldValue)) {
+            let typeInputFieldValue = document.getElementById("typeInputField").value;
+            switch (typeInputFieldValue) {
+                case "":
+                case "Both":
+                    selectedTypeFilter = "";
+                    break;
+                case "Image":
+                    selectedTypeFilter = "Image";
+                    break;
+                case "Video":
+                    selectedTypeFilter = "Video";
+                    break;
+                default:
+                    alert("Invalid type.");
+                    return;
+            }
 
-    if (anti36Local["Anti36Local"][document.getElementById("originInputField").value][personaInputFieldValue] === undefined) {
-        alert("Persona doesn't exist.");
-        return;
-    }
-    else if (pathToUnsortedPortrayal === undefined) {
-        alert("No portrayal selected.");
-        return;
+            // Append origin to selectedOriginFilters map
+            const writtenOrigin = document.getElementById("originInputField").value;
+            if (selectedOriginFilters[writtenOrigin] === undefined) {
+                selectedOriginFilters[writtenOrigin] = [];
+            }
+            if (!selectedOriginFilters[writtenOrigin].includes(personaInputFieldValue)) {
+                selectedOriginFilters[writtenOrigin].push(personaInputFieldValue);
+            }
+            console.log(selectedOriginFilters);
+
+            set_sorted_panel();
+        }
     }
 
-    // Remove "file:///" prefix and convert / to \\ before finding index
-    const pathToUnsortedPortrayalByIndex = unsortedPortrayals.indexOf(
-        pathToUnsortedPortrayal.substring(8).replace(/\//g, "\\").toString()); // Special thanks to chatgpt
-    client.ask_sort_please(pathToUnsortedPortrayalByIndex, selectedTags, document.getElementById("originInputField").value, personaInputFieldValue);
-    unsortedPortrayals.splice(pathToUnsortedPortrayalByIndex, 1);
-    document.getElementById("ws_below").innerHTML = "";
-    document.getElementsByClassName("portrayal_element")[pathToUnsortedPortrayalByIndex].remove();
+    else {
+        console.log("sorting");
+
+        const pathToUnsortedPortrayal = document.getElementById("ws_below").firstChild.src;
+
+        if (anti36Local["Anti36Local"][document.getElementById("originInputField").value][personaInputFieldValue] === undefined) {
+            alert("Persona doesn't exist.");
+            return;
+        }
+        else if (pathToUnsortedPortrayal === undefined) {
+            alert("No portrayal selected.");
+            return;
+        }
+
+        // Remove "file:///" prefix and convert / to \\ before finding index
+        const pathToUnsortedPortrayalByIndex = unsortedPortrayals.indexOf(
+            pathToUnsortedPortrayal.substring(8).replace(/\//g, "\\").toString()); // Special thanks to chatgpt
+        client.ask_sort_please(pathToUnsortedPortrayalByIndex, selectedTags, document.getElementById("originInputField").value, personaInputFieldValue);
+        unsortedPortrayals.splice(pathToUnsortedPortrayalByIndex, 1);
+        document.getElementById("ws_below").innerHTML = "";
+        document.getElementsByClassName("portrayal_element")[pathToUnsortedPortrayalByIndex].remove();
+    }
 }
 
 
@@ -266,6 +312,14 @@ document.addEventListener("DOMContentLoaded", async function() {
     anti36Local = await client.fetch_data("anti36local");
     existingTags = await client.fetch_data("existing_tags");
     unsortedPortrayals = await client.fetch_data("unsorted");
+
+    // Set typeInputField datalist
+    const typeDataList = document.getElementById("type_list");
+    ["Image", "Video", "Both"].forEach(type => {
+        const option = document.createElement("option");
+        option.value = type;
+        typeDataList.appendChild(option);
+    });
 
     set_left_panel();
     add_tags_map_in_workspace();
