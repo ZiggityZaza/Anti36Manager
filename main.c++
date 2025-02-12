@@ -30,11 +30,11 @@ namespace Anti36Manager {
 // This namespace contains all the necessary classes, variables and whatnot for the A36M
 
 // Console styling
-#define NEXT_METHOD ="\n\n >> "; // Entering new section
-#define OCCURANCE =    "\n >> "; // Standalone operation
-#define SUBLINE =      "\n  > "; // Next operation inside a method
-#define SUBSUBLINE =   "\n   > "; // Iteration inside a loop inside a method
-#define SUBSUBSUBLINE ="\n    > "; // Another iteration in...
+#define NEXT_METHOD   "\n\n >> " // Entering new section
+#define OCCURANCE     "\n >> "   // Standalone operation
+#define SUBLINE       "\n  > "   // Next operation inside a method
+#define SUBSUBLINE    "\n   > "  // Iteration inside a loop inside a method
+#define SUBSUBSUBLINE "\n    > " // Another iteration in...
 
 // Default values and Configs
 cslib::DualOutput console("F:\\log.txt");
@@ -155,6 +155,14 @@ class Main {
     }
     return &ORIGIN_ERROR_TYPE;
   }
+  Origin* unconst_origin(const Origin *const origin) {
+    for (Origin& originInQuestion : origins) {
+      if (&originInQuestion == origin) {
+        return &originInQuestion;
+      }
+    }
+    throw std::runtime_error("The origin doesn't exist.");
+  }
   Persona PERSONA_ERROR_TYPE = {&ORIGIN_ERROR_TYPE, "[PERSONA_ERROR_TYPE]", nullptr};
   Persona* persona_exists(const std::string& personaName, const Origin *const desecendingOrigin) {
     for (Persona& persona : personas) {
@@ -163,6 +171,14 @@ class Main {
       }
     }
     return &PERSONA_ERROR_TYPE;
+  }
+  Persona* unconst_persona(const Persona *const persona) {
+    for (Persona& personaInQuestion : personas) {
+      if (&personaInQuestion == persona) {
+        return &personaInQuestion;
+      }
+    }
+    throw std::runtime_error("The persona doesn't exist.");
   }
   Portrayal PORTRAYAL_ERROR_TYPE = {0, &PERSONA_ERROR_TYPE, {}, nullptr};
   Portrayal* portrayal_exists(const index_t index, const Persona *const desecendingPersona) {
@@ -453,7 +469,7 @@ class Main {
     console << SUBLINE << "Configuring portrayals/origins by persona";
     for (Persona& persona : personas) {
       portrayalsByPersona[&persona] = {};
-      personasByOrigin[origin_exists(persona.origin->name)].push_back(&persona);
+      personasByOrigin[unconst_origin(persona.origin)].push_back(&persona);
     }
 
     console << SUBLINE << "Configuring portrayals by tag";
@@ -469,7 +485,7 @@ class Main {
 
     console << SUBLINE << "Adding portrayals to the maps";
     for (Portrayal& portrayal : portrayals) {
-      portrayalsByPersona[persona_exists(portrayal.persona->name, portrayal.persona->origin)].push_back(&portrayal);
+      portrayalsByPersona[unconst_persona(portrayal.persona)].push_back(&portrayal);
       for (char tag : portrayal.tags) {
         portrayalsByTag[tag].push_back(&portrayal);
       }
@@ -735,7 +751,7 @@ class Main {
 
       if (!filterByPersona.empty()) {
         for (const auto& [origin, itsPersonas] : filterByPersona) {
-          if (cslib::does_this_exist_in_deque(itsPersonas, persona_exists(portrayal.persona->name, origin))) {
+          if (cslib::does_this_exist_in_deque(itsPersonas, unconst_persona(portrayal.persona))) {
             filteredPortrayals.push_back(&portrayal);
             break;
           }
@@ -834,9 +850,9 @@ class Main {
         try {
           nlohmann::json output;
           output["Anti36Local"] = {};
-          for (const Origin& origin : origins) {
+          for (Origin& origin : origins) {
             output["Anti36Local"][origin.name] = {};
-            for (Persona* persona : personasByOrigin[origin_exists(origin.name)]) {
+            for (Persona* persona : personasByOrigin[&origin]) {
               output["Anti36Local"][origin.name][persona->name] = {};
               for (Portrayal* portrayal : portrayalsByPersona[persona]) {
                 output["Anti36Local"][origin.name][persona->name][portrayal->index]["path"] = portrayal->where->path;
@@ -948,7 +964,7 @@ class Main {
 
         std::unordered_map<Persona*, std::deque<Portrayal*>> filteredPortrayalsSortedTempMap;
         for (Portrayal* portrayal : filteredPortrayals) {
-          filteredPortrayalsSortedTempMap[persona_exists(portrayal->persona->name, portrayal->persona->origin)].push_back(portrayal);
+          filteredPortrayalsSortedTempMap[unconst_persona(portrayal->persona)].push_back(portrayal);
         }
 
         std::deque<Portrayal*> filteredPortrayalsSortedByIndex;

@@ -90,6 +90,15 @@ const client = new Anti36Proxy();
 
 
 
+// Helper
+function elementById(id) {
+    return document.getElementById(id);
+}
+function valueById(id) {
+    return document.getElementById(id).value;
+}
+
+
 
 // Switching between sorting and viewing modes
 let isSortingMode = true;
@@ -98,9 +107,9 @@ async function switch_mode() {
     isSortingMode = !isSortingMode;
     document.body.style.cursor = "wait";
     await set_left_panel();
-    document.getElementById("typeInputField").disabled = isSortingMode;
+    elementById("typeInputField").disabled = isSortingMode;
     // Disable not allowed cursor
-    document.getElementById("typeInputField").style.cursor = isSortingMode ? "not-allowed" : "text";
+    elementById("typeInputField").style.cursor = isSortingMode ? "not-allowed" : "text";
     document.body.style.cursor = "default";
 }
 
@@ -108,8 +117,8 @@ async function switch_mode() {
 
 // Set left panel values
 async function set_unsorted_panel() {
-    document.getElementById("portrayal_elements").innerHTML = "";
-    const unsortedListHeader = document.getElementById("portrayal_previews_title");
+    elementById("portrayal_elements").innerHTML = "";
+    const unsortedListHeader = elementById("portrayal_previews_title");
     unsortedListHeader.innerHTML = `${unsortedPortrayals.length} files in "$unsorted"`;
 
     unsortedPortrayals.forEach(unsortedFPath => {
@@ -130,19 +139,20 @@ async function set_unsorted_panel() {
             }
             workspaceMedia.src = unsortedFPath;
             workspaceMedia.id = "portrayal_element_selected";
-            document.getElementById("ws_below").innerHTML = workspaceMedia.outerHTML;
+            elementById("ws_below").innerHTML = workspaceMedia.outerHTML;
         };
-        document.getElementById("portrayal_elements").appendChild(display);
+        elementById("portrayal_elements").appendChild(display);
     });
 }
 
 
 let selectedTypeFilter = "";
 let selectedOriginFilters = {};
+let selectedTags = []; // In general
 
 async function set_sorted_panel() {
-    document.getElementById("portrayal_elements").innerHTML = "";
-    const sortedListHeader = document.getElementById("portrayal_previews_title");
+    elementById("portrayal_elements").innerHTML = "";
+    const sortedListHeader = elementById("portrayal_previews_title");
     sortedListHeader.innerHTML = `${filteredPortrayals.length} files in "Anti36Local"`;
 
     await client.tell_filters(selectedOriginFilters, selectedTags, selectedTypeFilter);
@@ -167,9 +177,9 @@ async function set_sorted_panel() {
             }
             workspaceMedia.src = sortedFPath;
             workspaceMedia.id = "portrayal_element_selected";
-            document.getElementById("ws_below").innerHTML = workspaceMedia.outerHTML;
+            elementById("ws_below").innerHTML = workspaceMedia.outerHTML;
         };
-        document.getElementById("portrayal_elements").appendChild(display);
+        elementById("portrayal_elements").appendChild(display);
     });
 }
 
@@ -185,21 +195,11 @@ async function set_left_panel() {
 
 
 // Set right panel values
-function add_origin_datalist() {
-    const dataList = document.getElementById("origin_list");
-    for (const origin in anti36Local["Anti36Local"]) {
-        const option = document.createElement("option");
-        option.value = origin;
-        dataList.appendChild(option);
-    }
-}
-
-
-function set_persona_datalist(writtenOrigin) {
-    const dataList = document.getElementById("persona_list");
+function set_persona_datalist() {
+    const dataList = elementById("persona_list");
     dataList.innerHTML = "";
-    document.getElementById("personaInputField").value = "";
-    for (const persona in anti36Local["Anti36Local"][writtenOrigin]) {
+    elementById("personaInputField").value = "";
+    for (const persona in anti36Local["Anti36Local"][elementById("originInputField").value]) {
         const option = document.createElement("option");
         option.value = persona;
         dataList.appendChild(option);
@@ -207,95 +207,80 @@ function set_persona_datalist(writtenOrigin) {
 }
 
 
-function personaInputField_valid(writtenPersona) {
-    if (anti36Local["Anti36Local"][document.getElementById("originInputField").value][writtenPersona] === undefined) {
-        alert("No persona to that origin exists");
-        document.getElementById("personaInputField").value = "";
-        document.getElementById("originInputField").value = "";
+async function personaInputField_valid() {
+    // Also allows confirm button to be pressed
+    const originInputField = elementById("originInputField").value;
+    const personaInputField = elementById("personaInputField").value;
+
+    if (anti36Local["Anti36Local"][originInputField] === undefined) {
+        alert("Origin doesn't exist.");
+        elementById("personaInputField").value = "";
         return false;
     }
+    else if (anti36Local["Anti36Local"][originInputField][personaInputField] === undefined) {
+        alert("Origin exists but persona field is empty or invalid.");
+        elementById("personaInputField").value = "";
+        return false;
+    }
+
     return true;
 }
 
 
 
-let selectedTags = [];
-
-function add_tags_map_in_workspace() {
-    existingTags.forEach(tag => {
-        const tagElement = document.createElement("div");
-        tagElement.className = "tag";
-        tagElement.innerHTML = tag;
-        tagElement.onclick = () => {
-            if (selectedTags.includes(tag)) {
-                selectedTags = selectedTags.filter(t => t !== tag); // if t ain't tag keep it
-                tagElement.style.backgroundColor = "";
-            } else {
-                selectedTags.push(tag);
-                tagElement.style.backgroundColor = `#${Math.floor(Math.random() * 16777215).toString(16)}`;
-            }
-        };
-        document.getElementById("tags_map").appendChild(tagElement);
-    });
-}
 
 
 function pressed_confirm_button() {
-    const personaInputFieldValue = document.getElementById("personaInputField").value;
+    if (personaInputField_valid()) {
+        alert("Please enter a valid origin and persona.");
+        return;
+    }
+
+    const personaInputFieldValue = elementById("personaInputField").value;
     if (!isSortingMode) {
         console.log("putting together remix filters");
-        if (personaInputField_valid(personaInputFieldValue)) {
-            let typeInputFieldValue = document.getElementById("typeInputField").value;
-            switch (typeInputFieldValue) {
-                case "":
-                case "Both":
-                    selectedTypeFilter = "";
-                    break;
-                case "Image":
-                    selectedTypeFilter = "Image";
-                    break;
-                case "Video":
-                    selectedTypeFilter = "Video";
-                    break;
-                default:
-                    alert("Invalid type.");
-                    return;
-            }
 
-            // Append origin to selectedOriginFilters map
-            const writtenOrigin = document.getElementById("originInputField").value;
-            if (selectedOriginFilters[writtenOrigin] === undefined) {
-                selectedOriginFilters[writtenOrigin] = [];
-            }
-            if (!selectedOriginFilters[writtenOrigin].includes(personaInputFieldValue)) {
-                selectedOriginFilters[writtenOrigin].push(personaInputFieldValue);
-            }
-            console.log(selectedOriginFilters);
-
-            set_sorted_panel();
+        switch (elementById("typeInputField").value) {
+            case "":
+            case "Both":
+                selectedTypeFilter = "";
+                break;
+            case "Image":
+                selectedTypeFilter = "Image";
+                break;
+            case "Video":
+                selectedTypeFilter = "Video";
+                break;
+            default:
+                alert("Only image and video are supported as types.");
+                return;
         }
+        // Append origin to selectedOriginFilters map
+        const writtenOrigin = elementById("originInputField").value;
+        if (selectedOriginFilters[writtenOrigin] === undefined) {
+            selectedOriginFilters[writtenOrigin] = [];
+        }
+        if (!selectedOriginFilters[writtenOrigin].includes(personaInputFieldValue)) {
+            selectedOriginFilters[writtenOrigin].push(personaInputFieldValue);
+        }
+        console.log(selectedOriginFilters);
+        set_sorted_panel();
     }
 
     else {
-        console.log("sorting");
+        console.log("sorting unsorted portrayal");
 
-        const pathToUnsortedPortrayal = document.getElementById("ws_below").firstChild.src;
-
-        if (anti36Local["Anti36Local"][document.getElementById("originInputField").value][personaInputFieldValue] === undefined) {
-            alert("Persona doesn't exist.");
-            return;
-        }
-        else if (pathToUnsortedPortrayal === undefined) {
+        const pathToUnsortedPortrayal = elementById("ws_below").firstChild.src;
+        if (pathToUnsortedPortrayal === undefined) {
             alert("No portrayal selected.");
             return;
         }
-
         // Remove "file:///" prefix and convert / to \\ before finding index
         const pathToUnsortedPortrayalByIndex = unsortedPortrayals.indexOf(
             pathToUnsortedPortrayal.substring(8).replace(/\//g, "\\").toString()); // Special thanks to chatgpt
-        client.ask_sort_please(pathToUnsortedPortrayalByIndex, selectedTags, document.getElementById("originInputField").value, personaInputFieldValue);
+        client.ask_sort_please(pathToUnsortedPortrayalByIndex, selectedTags, elementById("originInputField").value, personaInputFieldValue);
         unsortedPortrayals.splice(pathToUnsortedPortrayalByIndex, 1);
-        document.getElementById("ws_below").innerHTML = "";
+        elementById("ws_below").innerHTML = "";
         document.getElementsByClassName("portrayal_element")[pathToUnsortedPortrayalByIndex].remove();
     }
 }
@@ -313,15 +298,43 @@ document.addEventListener("DOMContentLoaded", async function() {
     unsortedPortrayals = await client.fetch_data("unsorted");
 
     // Set typeInputField datalist
-    const typeDataList = document.getElementById("type_list");
+    const typeDataList = elementById("type_list");
     ["Image", "Video", "Both"].forEach(type => {
         const option = document.createElement("option");
         option.value = type;
         typeDataList.appendChild(option);
     });
 
+
+
     set_left_panel();
-    add_tags_map_in_workspace();
-    add_origin_datalist();
+
+
+    // Set tags map in workspace
+    existingTags.forEach(tag => {
+        const tagElement = document.createElement("div");
+        tagElement.className = "tag";
+        tagElement.innerHTML = tag;
+        tagElement.onclick = () => {
+            if (selectedTags.includes(tag)) {
+                selectedTags = selectedTags.filter(t => t !== tag); // if t ain't tag keep it
+                tagElement.style.backgroundColor = "";
+            } else {
+                selectedTags.push(tag);
+                tagElement.style.backgroundColor = `#${Math.floor(Math.random() * 16777215).toString(16)}`;
+            }
+        };
+        elementById("tags_map").appendChild(tagElement);
+    });
+
+
+    // Set originInputField datalist
+    const dataList = elementById("origin_list");
+    for (const origin in anti36Local["Anti36Local"]) {
+        const option = document.createElement("option");
+        option.value = origin;
+        dataList.appendChild(option);
+    }
+
     document.body.style.cursor = "default";
 });
