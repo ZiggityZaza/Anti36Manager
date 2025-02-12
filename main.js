@@ -2,7 +2,6 @@
     "Anti36Local": {
         "Origin 1": {
             "Persona 1": {
-                0: null, (this is always null as the key is the index)
                 1: {
                     path: "E:\\Anti36Local\\Origin 1\\Persona 1\\1_ABCD_.jpg",
                     tags: ["_A", "_B", "_C", "_D_"]
