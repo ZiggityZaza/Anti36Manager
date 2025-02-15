@@ -27,7 +27,7 @@ Not anymore. Rather than dealing with bloated UI frameworks like Qt, I'm using t
 
 #
 ### I want to contribute! 🫦🫂
-Check the [CONTRIBUTING.md](CONTRIBUTING.md) file for more information.
+Check the [CONTRIBUTING](https://github.com/ZiggityZaza/Anti36Manager/wiki/CONTRIBUTING) wiki link for more information.
 
 
 #
