@@ -6,28 +6,45 @@
 </head>
 <body>
     <div id="portrayal_previews">
-        <r id="uns_head"><!-- X files in "$unsorted" --></r>
-        <div id="uns_elements">
+        <r id="portrayal_previews_title"><!-- X files in "$unsorted" --></r>
+        <div id="portrayal_elements">
             <!-- Images and such -->
         </div>
     </div>
-
     <div id="workspace">
         <r id="ws_panel_head">Preference Panel ('PP' for short)</r>
-        <div id="ws_panel"></div>
+        <div id="ws_panel">
+            <div id="tags_map"><!-- tags --></div>
+        </div>
         <div id="ws_control_panel">
-            <div id="ws_control_panel_add_button" onclick="ws_control_panel_confirmed()">Confirm</div>
-            <div id="ws_control_panel_switch_button">Switch to sorting/filtering</div>
+            <div id="ws_control_panel_add_button" onclick="pressed_confirm_button()">Confirm</div>
+            <div id="ws_control_panel_switch_button" onclick="switch_mode()">Switch to sorting/filtering</div>
         </div>
         <div id="ws_input_panel">
-            <input list="origin_list" name="origin" id="originInputField" onchange="origin_selected(this.value)" placeholder="Select an origin here">
-            <datalist id="origin_list"></datalist>
-            <input list="persona_list" name="persona" id="personaInputField" onchange="persona_selected(this.value)" placeholder="The persona from that origin">
-            <datalist id="persona_list"></datalist>
+            <input list="origin_list" name="origin" id="originInputField" onchange="set_persona_datalist()" placeholder="Select an origin here">
+            <datalist id="origin_list"><!-- All origins --></datalist>
+            <input list="persona_list" name="persona" id="personaInputField" onchange="personaInputField_valid()" placeholder="The persona from that origin">
+            <datalist id="persona_list"><!-- it's personas --></datalist>
+            <input disabled list="type_list" name="type" id="typeInputField" placeholder="Auto determined when sorting!">
+            <datalist id="type_list"><!-- it's types --></datalist>
         </div>
 
         <r id="ws_below_head">Workspace</r>
         <div id="ws_below">
+            <h2>Welcome to Anti36Manager</h2>  
+            <p>Thank you for trying out my project! If you're running this for the first time, you might encounter an error—don't worry, I'll guide you through it. If you skipped the README.md, here is a quick summary.</p>  
+            <h3>What is Anti36Manager?</h3>  
+            <p>Anti36Manager is a turbo lightweight browser-UI(ed?) tool for organizing images/videos (portrayals) in a structured way. Think of it as a gallery with more control.</p>  
+            <h3>Setup</h3>  
+            <p>Use a separate disk (e.g., a USB drive).</p>  
+            <p>Create a folder named <b>Anti36Local</b>.</p>  
+            <p>Create origin and persona folders in which you want your portrayals to land. See below</p>  
+            <pre>Anti36Local(1)→(n)Origins(1)→(n)Personas(1)→(n)Portrayals (You wouldn't manually place portrayals though)</pre>  
+            <p>A single file path might look like:</p>  
+            <pre>disk:/Anti36Local/Origin/Persona/index_tags_.extension</pre>  
+            <h3>Whether you're archiving personal memories or twisted unholy portrayals, it is all up to you.</h3>
+            <p>In case of an exception, You don't have to worry about losing your data. Files are moved and folders untouched.</p>
+            <p>Enjoy!</p>
         </div>
     </div>
 </body>

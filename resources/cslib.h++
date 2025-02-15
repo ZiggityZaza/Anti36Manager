@@ -2,15 +2,15 @@
 #define LOCAL_SERVER_H
 #endif
 
-#include <functional>
-#include <filesystem>
-#include <iostream>
-#include <fstream>
-#include <cstdint>
+#include <unordered_map> // Faster lookups
+#include <filesystem> // Finding and moving files and folders in the Anti36Local folder
+#include <algorithm> // Finding elements in a container
+#include <iostream> // Printing out messages and std::string (and everything else that comes with it)
+#include <fstream> // Logging
+#include <cstdint> // Cooler numbers (small numbers supported by stl)
 #include <chrono>
-#include <thread>
-#include <mutex>
-#include <deque>
+#include <deque> // Containers with continuous memory addresses
+
 #include "httplib.h"
 #include "json.hpp"
 
@@ -38,33 +38,9 @@ namespace cslib { // Jack of all trades (Helper functions and classes)
     }
 
 
-    static std::string unescape_string(const std::string &escapedString) {
-
-      std::string result;
-      for (uint8_t i = 0; i < escapedString.length(); ++i) {
-        if (escapedString[i] == '\\') {
-          if (i + 1 < escapedString.length()) {
-            switch (escapedString[i + 1]) {
-              case 'n': result += '\n'; break;
-              case 't': result += '\t'; break;
-              case 'r': result += '\r'; break;
-              case '0': result += '\0'; break;
-              case '\\': result += '\\'; break;
-              case '\'': result += '\''; break;
-              case '\"': result += '\"'; break;
-              default: result += escapedString[i + 1]; break;
-            }
-            ++i;
-          }
-        } else {
-          result += escapedString[i];
-        }
-      }
-      return result;
-    }
     static std::string escape_string(const std::string &str) {
       std::string result;
-      for (char c : str) {
+      for (unsigned char c : str) {
         switch (c) {
           case '\n': result += "\\n"; break;
           case '\t': result += "\\t"; break;
@@ -106,7 +82,7 @@ namespace cslib { // Jack of all trades (Helper functions and classes)
           return result;
         }
 
-        for (char c : str) {
+        for (unsigned char c : str) {
             if (c == delimiter) {
                 result.push_back(temp);
                 temp.clear();
@@ -175,13 +151,21 @@ namespace cslib { // Jack of all trades (Helper functions and classes)
       file.flush();
       return *this;
     }
+
+    template <typename T>
+    DualOutput& operator<<(T&& output) {
+      std::cout << output;
+      file << output;
+      file.flush();
+      return *this;
+    }
   };
 
 
   class TimeStamp {
     // Specialized replacement for std::chrono::system_clock::time_point
     public:
-      enum Weekday : char {
+      enum Weekday : unsigned char {
         MONDAY = 'M',
         TUESDAY = 'U', // U for tUesday
         WEDNESDAY = 'W',

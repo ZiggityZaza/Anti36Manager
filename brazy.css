@@ -133,7 +133,19 @@ body {
             border-radius: 10px;
             color: white;
             background-color: rgb(70, 69, 74);
-    }
+        }
+        #typeInputField {
+            display: inline;
+            transition: background-color 1s;
+            margin-bottom: 1vh;
+            padding: 1vh;
+            width: 100%;
+            font-size: 100%;
+            border-radius: 10px;
+            color: white;
+            background-color: rgb(70, 69, 74);
+            cursor: not-allowed;
+}
 
     #ws_below_head {
         display: block;
@@ -147,6 +159,10 @@ body {
     #ws_below {
         color: rgb(247, 247, 247);
         width: -webkit-fill-available;
+    }
+    #portrayal_element_selected {
+        width: 100%;
+        height: auto;
 }
 
 
@@ -166,7 +182,7 @@ body {
     background-color: rgb(53, 53, 53);
     border-radius: 5px;
 
-    }#uns_head {
+    }#portrayal_previews_title {
         display: block;
         /* Font settings */
         font-size: 4vh;
@@ -177,20 +193,20 @@ body {
         text-align:center;
         box-shadow: 0 8px 8px 0 rgba(0,0,0,0.2);
     }
-    #uns_elements {
+    #portrayal_elements {
         display: flex;
         flex-wrap: wrap;
         justify-content: center;
         align-items: space-between;
     }
-    .uns_element {
+    .portrayal_element {
         opacity: 0.5;
         font-size: 100%;
-        width: 80%;
+        width: 100%;
         height: auto;
         transition: transform 0.3s ease-in-out;
     }
-    .uns_element:hover {
+    .portrayal_element:hover {
         transform: scale(1.05);
         transition: transform 0.2s;
         cursor: pointer;
