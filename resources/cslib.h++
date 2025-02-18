@@ -163,7 +163,6 @@ namespace cslib { // Jack of all trades (Helper functions and classes)
 
 
   class TimeStamp {
-    // Specialized replacement for std::chrono::system_clock::time_point
     public:
       enum Weekday : unsigned char {
         MONDAY = 'M',

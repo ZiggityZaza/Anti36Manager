@@ -231,7 +231,7 @@ async function personaInputField_valid() {
 
 
 function pressed_confirm_button() {
-    if (personaInputField_valid()) {
+    if (!personaInputField_valid()) {
         alert("Please enter a valid origin and persona.");
         return;
     }
