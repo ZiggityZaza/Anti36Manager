@@ -1,5 +1,8 @@
-# Anti36Manager 🦴
+# Anti36Manager 🦴 (Paused)
 Useless solution to sort and manage yer favorite "appropriate" pictures/videos. Sorted by origins, personas, tags and media types.
+
+######
+But as in now, I don't think it's worth continuing. I will archive this until I find a use for this.
 
 
 #### Reworked UI (Experimental)
