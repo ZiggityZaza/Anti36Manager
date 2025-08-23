@@ -14,7 +14,9 @@
   },
   "keywords": [],
   "dependencies": {
-    "electron-squirrel-startup": "^1.0.1"
+    "electron-squirrel-startup": "^1.0.1",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1"
   },
   "devDependencies": {
     "@electron-forge/cli": "^7.8.3",
@@ -26,6 +28,8 @@
     "@electron-forge/plugin-fuses": "^7.8.3",
     "@electron/fuses": "^1.8.0",
     "@types/node": "^24.3.0",
+    "@types/react": "^19.1.11",
+    "@types/react-dom": "^19.1.7",
     "electron": "37.3.1",
     "typescript": "^5.9.2"
   }

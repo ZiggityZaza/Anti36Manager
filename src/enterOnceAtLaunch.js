@@ -8,9 +8,9 @@ const createWindow = () => {
     width: 800,
     height: 600,
     webPreferences: {
-        nodeIntegration: true,
-        contextIsolation: false,
-        preload: path.join(path.dirname(thisFilename), '../dist/main.js'), // Compiled at src/main.ts
+      nodeIntegration: true,
+      contextIsolation: false,
+      preload: path.join(path.dirname(thisFilename), '../dist/main.js'), // Compiled at src/main.ts
     },
   })
   mainWindow.loadFile(path.join(path.dirname(thisFilename), '../src/main.html'))
