@@ -14,6 +14,8 @@ const createWindow = () => {
     },
   })
   mainWindow.loadFile(path.join(path.dirname(thisFilename), '../src/main.html'))
+  // Load dev tools
+  mainWindow.webContents.openDevTools()
 }
 electron.app.whenReady().then(() => {
   createWindow()
