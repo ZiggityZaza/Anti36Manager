@@ -1,7 +1,7 @@
 #!/bin/bash
 dist="./dist"
 src="./src"
-entryTSX="$src/main.ts"
+entryTSX="$src/main.tsx"
 rendererJS="$dist/main.js"
 
 # Make sure TypeScript files are error-free
@@ -17,7 +17,7 @@ mkdir -p "$dist"
 rm -rf "$dist"
 
 echo "Transpiling and bundling TypeScript files in $src directory..."
-npx esbuild "$entryTSX" --bundle --platform=node --format=esm --outfile="$rendererJS" # --jsx=automatic # Needs checks as itself doesn't (bugged)
+npx esbuild "$entryTSX" --bundle --platform=node --format=esm --outfile="$rendererJS" --jsx=automatic # Needs checks as itself doesn't (bugged)
 # npx tsc
 
 echo "Running $rendererJS..."

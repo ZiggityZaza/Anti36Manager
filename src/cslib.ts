@@ -1,8 +1,12 @@
+/*
+  Provides basic utilities
+*/
 import * as fs from "node:fs"
-import * as fsp from "node:fs/promises"
 import * as path from "node:path"
 import * as os from "node:os"
 import { spawnSync } from "node:child_process"
+
+
 
 
 export function is_windows(): boolean {
@@ -11,6 +15,7 @@ export function is_windows(): boolean {
 export function is_unix(): boolean {
   return os.platform() === "linux" || os.platform() === "darwin"
 }
+
 
 
 export function range(_from: number, _to: number, _step: number = 1): Array<number> {
@@ -27,12 +32,44 @@ export function range(_from: number, _to: number, _step: number = 1): Array<numb
 }
 
 
-export function add_self_to_map<K, V>(_map: Map<K, V[]>, _key: K, _value: V): void {
+
+export function find_self_in_arr<T>(_array: Array<T>, _lookFor: T): T | undefined {
+  return _array.find(item => item === _lookFor)
+}
+export function find_key_in_map<K, V>(_map: Map<K, V[]>, _key: K): V[] | undefined {
+  return _map.has(_key) ? _map.get(_key) : undefined
+}
+export function find_val_in_map<K, V>(_map: Map<K, V[]>, _value: V): K | undefined {
+  for (const [key, values] of _map.entries())
+    if (values.includes(_value))
+      return key
+  return undefined
+}
+
+
+export function add_val_to_map<K, V>(_map: Map<K, V[]>, _key: K, _value: V): void {
   if (_map.has(_key))
     _map.get(_key)!.push(_value)
   else
     _map.set(_key, [_value])
 }
+export function add_key_to_map<K, V>(_map: Map<K, V[]>, _key: K): void {
+  if (!_map.has(_key))
+    _map.set(_key, [])
+}
+
+
+
+export function sort_arr<T>(_array: Array<T>, _compareFn: (a: T, b: T) => number): Array<T> {
+  return _array.slice().sort(_compareFn)
+}
+
+
+export function or_err<T>(x: T | undefined, msg: string): T {
+  if (x === undefined) throw new AnyError(msg)
+  return x
+}
+
 
 
 export function to_str(x: unknown): string {
@@ -50,8 +87,28 @@ export function to_str(x: unknown): string {
 
 
 
+export function time_to_str() {
+  // Returns HH:MM:SS-DD:MM:YYYY
+  const n = new Date()
+  const p = (n: number) => n.toString().padStart(2, "0")
+  return `${p(n.getHours())}:${p(n.getMinutes())}:${p(n.getSeconds())}-${p(n.getDate())}:${p(n.getMonth() + 1)}:${n.getFullYear()}`
+}
+
+
+
 export function separate(_str: string, _sep: string): string[] {
-  return _str.split(_sep)
+  const result: string[] = []
+  let current = ""
+  for (const c of _str) {
+    if (c === _sep) {
+      result.push(current)
+      current = ""
+    } else {
+      current += c
+    }
+  }
+  result.push(current)
+  return result
 }
 
 
@@ -66,7 +123,48 @@ export class AnyError extends Error {
 
 
 
+export const enum ANSII_ESCAPE {
+  BOLD = "\u001b[1m",
+  ITALIC = "\u001b[3m",
+  UNDERLINE = "\u001b[4m",
+  STRIKETHROUGH = "\u001b[9m",
+  RESET = "\u001b[0m",
+  BLACK = "\u001b[30m",
+  RED = "\u001b[31m",
+  GREEN = "\u001b[32m",
+  YELLOW = "\u001b[33m",
+  BLUE = "\u001b[34m",
+  MAGENTA = "\u001b[35m",
+  CYAN = "\u001b[36m",
+  WHITE = "\u001b[37m"
+}
+export class Out {
+  suffix: string = ""
+  prefix: string
+  constructor(_prefix: string, _color?: ANSII_ESCAPE) {
+    this.prefix = _prefix
+    if (_color)
+      this.prefix = _color + this.prefix + ANSII_ESCAPE.RESET
+  }
+
+  print(...args: any[]) {
+   console.log(`[${time_to_str()}]${this.prefix}${this.suffix}`, ...args)
+  }
+}
+
+
+
+export const enum RoadStatus {
+  FILE = "FILE",
+  FOLDER = "FOLDER",
+  BLOCK_DEVICE = "BLOCK_DEVICE",
+  CHAR_DEVICE = "CHAR_DEVICE",
+  SYMLINK = "SYMLINK",
+  FIFO = "FIFO",
+  SOCKET = "SOCKET"
+}
 type road_t = Road | Folder | BizarreRoad
+export const pathSep = is_windows() ? "\\" : "/"
 export abstract class Road {
   /*
     Represents an entry on the disk with
@@ -79,17 +177,15 @@ export abstract class Road {
   isAt: string
 
 
-  constructor(_lookFor: string, _shouldBeOfType?: fs.Stats["mode"]) {
+  constructor(_lookFor: string, _shouldBeOfType?: RoadStatus) {
     /*
       Find and resolve the absolute path of _lookFor
       with optional check to _shouldBeOfType
     */
     this.isAt = path.resolve(_lookFor)
-    if (_shouldBeOfType) {
-      const actualType = this.type()
-      if (actualType !== _shouldBeOfType)
-        throw new AnyError("Expected type ", _shouldBeOfType, " but got ", actualType)
-    }
+    if (_shouldBeOfType)
+      if (this.self_type() !== _shouldBeOfType)
+        throw new AnyError(`Expected type "${_shouldBeOfType}" from "${this.isAt}" but got "${this.self_type()}"`)
   }
 
 
@@ -97,12 +193,16 @@ export abstract class Road {
   del(): void {} // Skipped because nothing to destruct
 
 
-  type(): fs.Stats["mode"] | "none" {
-    try {
-      const st = fs.lstatSync(this.isAt)
-      return st.mode
-    } catch {
-      return "none"
+  self_type(): RoadStatus {
+    switch (fs.lstatSync(this.isAt).mode & fs.constants.S_IFMT) {
+      case fs.constants.S_IFREG: return RoadStatus.FILE
+      case fs.constants.S_IFDIR: return RoadStatus.FOLDER
+      case fs.constants.S_IFBLK: return RoadStatus.BLOCK_DEVICE
+      case fs.constants.S_IFCHR: return RoadStatus.CHAR_DEVICE
+      case fs.constants.S_IFLNK: return RoadStatus.SYMLINK
+      case fs.constants.S_IFIFO: return RoadStatus.FIFO
+      case fs.constants.S_IFSOCK: return RoadStatus.SOCKET
+      default: throw new AnyError(`Unknown road type ${fs.lstatSync(this.isAt).mode} for path: ${this.isAt}`)
     }
   }
 
@@ -169,10 +269,9 @@ export class BizarreRoad extends Road {
     or pipes.
   */
   constructor(_lookFor: string) {
-    const stats = fs.lstatSync(_lookFor)
-    if (stats.isDirectory() || stats.isFile())
-      throw new AnyError(`"${_lookFor}" is a regular file or directory`)
     super(_lookFor)
+    if (this.self_type() === RoadStatus.FILE || this.self_type() === RoadStatus.FOLDER)
+      throw new AnyError(`"${_lookFor}" is a regular file or directory`)
   }
 
 
@@ -184,11 +283,9 @@ export class BizarreRoad extends Road {
       Attempt to copy the special file using system utilities
     */
     const destPath = path.join(_copyInto.isAt, this.name())
-    const stats = fs.lstatSync(this.isAt)
     if (fs.existsSync(destPath))
       throw new AnyError(`Copying to "${destPath}" would overwrite an existing entry`)
-    if (stats.isSymbolicLink()) {
-      // Copy symlink target
+    if (this.self_type() === RoadStatus.SYMLINK) {
       const linkTarget = fs.readlinkSync(this.isAt)
       fs.symlinkSync(linkTarget, destPath)
     } else {
@@ -219,7 +316,7 @@ export class Folder extends Road {
   constructor(_lookFor: string, createIfNotExists: boolean = false) {
     if (createIfNotExists && !fs.existsSync(_lookFor))
       fs.mkdirSync(_lookFor, { recursive: true })
-    super(_lookFor, fs.constants.S_IFDIR)
+    super(_lookFor, RoadStatus.FOLDER)
   }
 
 
@@ -229,13 +326,16 @@ export class Folder extends Road {
   list(): Array<road_t> {
     return fs.readdirSync(this.isAt).map(name => {
       const fullPath = path.join(this.isAt, name)
-      const stats = fs.lstatSync(fullPath)
-      if (stats.isDirectory())
-        return new Folder(fullPath)
-      else if (stats.isFile())
-        return new File(fullPath)
-      else
-        return new BizarreRoad(fullPath)
+      switch (fs.lstatSync(fullPath).mode & fs.constants.S_IFMT) {
+        case fs.constants.S_IFDIR: return new Folder(fullPath)
+        case fs.constants.S_IFREG: return new File(fullPath)
+        case fs.constants.S_IFLNK: return new BizarreRoad(fullPath)
+        case fs.constants.S_IFBLK: return new BizarreRoad(fullPath)
+        case fs.constants.S_IFCHR: return new BizarreRoad(fullPath)
+        case fs.constants.S_IFIFO: return new BizarreRoad(fullPath)
+        case fs.constants.S_IFSOCK: return new BizarreRoad(fullPath)
+        default: throw new AnyError(`Unknown file type for path: ${fullPath}`)
+      }
     })
   }
 
@@ -255,16 +355,19 @@ export class Folder extends Road {
     else if (is_unix() && _lookFor.startsWith("/"))
       throw new AnyError(`Path must be relative, got "${_lookFor}"`)
 
-    if (fs.existsSync(path.join(this.isAt, _lookFor))) {
-      const stats = fs.lstatSync(path.join(this.isAt, _lookFor))
-      if (stats.isDirectory())
-        return new Folder(path.join(this.isAt, _lookFor))
-      else if (stats.isFile())
-        return new File(path.join(this.isAt, _lookFor))
-      else
-        return new BizarreRoad(path.join(this.isAt, _lookFor))
+    if (!fs.existsSync(path.join(this.isAt, _lookFor)))
+      return undefined
+
+    switch (fs.lstatSync(path.join(this.isAt, _lookFor)).mode & fs.constants.S_IFMT) {
+      case fs.constants.S_IFDIR: return new Folder(path.join(this.isAt, _lookFor))
+      case fs.constants.S_IFREG: return new File(path.join(this.isAt, _lookFor))
+      case fs.constants.S_IFLNK: return new BizarreRoad(path.join(this.isAt, _lookFor))
+      case fs.constants.S_IFBLK: return new BizarreRoad(path.join(this.isAt, _lookFor))
+      case fs.constants.S_IFCHR: return new BizarreRoad(path.join(this.isAt, _lookFor))
+      case fs.constants.S_IFIFO: return new BizarreRoad(path.join(this.isAt, _lookFor))
+      case fs.constants.S_IFSOCK: return new BizarreRoad(path.join(this.isAt, _lookFor))
+      default: throw new AnyError(`Unknown file type for path: ${_lookFor}`)
     }
-    return undefined
   }
 
 
@@ -298,7 +401,7 @@ export class File extends Road {
   constructor(_lookFor: string, createIfNotExists: boolean = false) {
     if (createIfNotExists && !fs.existsSync(_lookFor))
       fs.writeFileSync(_lookFor, "")
-    super(_lookFor, fs.constants.S_IFREG)
+    super(_lookFor, RoadStatus.FILE)
   }
 
 

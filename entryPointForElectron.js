@@ -5,17 +5,16 @@ import * as url from 'url'
 const createWindow = () => {
   const thisFilename = url.fileURLToPath(import.meta.url)
   const mainWindow = new electron.BrowserWindow({
-    width: 800,
-    height: 600,
+    width: 1820,
+    height: 980,
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
-      preload: path.join(path.dirname(thisFilename), '../dist/main.js'), // Compiled at src/main.ts
+      preload: path.join(path.dirname(thisFilename), './dist/main.js'), // Compiled at src/
     },
   })
-  mainWindow.loadFile(path.join(path.dirname(thisFilename), '../src/main.html'))
-  // Load dev tools
-  mainWindow.webContents.openDevTools()
+  mainWindow.loadFile(path.join(path.dirname(thisFilename), './src/main.html'))
+  mainWindow.webContents.openDevTools() // Load dev tools
 }
 electron.app.whenReady().then(() => {
   createWindow()

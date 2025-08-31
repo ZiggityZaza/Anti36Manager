@@ -3,7 +3,7 @@
   "productName": "Wannabe electron app",
   "version": "1.0.0",
   "description": "My Electron application description",
-  "main": "src/entryPointForElectron.js",
+  "main": "./entryPointForElectron.js",
   "type": "module",
   "scripts": {
     "start": "electron-forge start",
