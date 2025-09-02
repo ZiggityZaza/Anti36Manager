@@ -5,8 +5,6 @@ import * as os from "node:os"
 import * as cs from "./cslib.js"
 
 
-
-
 export const enum MediaType {
   IMAGE = "IMAGE",
   VIDEO = "VIDEO"
@@ -26,6 +24,11 @@ export const out: cs.Out = new cs.Out("[Anti36Manager]", cs.ANSII_ESCAPE.CYAN)
 
 
 
+export function toggle_out(): void {
+  out.silence = !out.silence
+}
+
+
 // Lookups
 export const EXTENSION_TO_MEDIA: Record<string, MediaType> = {
   ".mp4": MediaType.VIDEO,
@@ -43,7 +46,6 @@ export const EXTENSION_TO_MEDIA: Record<string, MediaType> = {
 
 
 // Access
-export let unsortedPortrayalsPaths: (cs.File | cs.Folder)[] = []
 export let personasByOrigin: Map<Origin, Persona[]> = new Map(); // Owns origins and personas
 export let portrayalsByPersona: Map<Persona, Portrayal[]> = new Map(); // Owns portrayals
 
@@ -177,6 +179,20 @@ export function list_all_portrayals(_fromPersona?: Persona): Portrayal[] {
   return Array.from(portrayalsByPersona.values()).flat()
 }
 
+export function list_all_unsorted_portrayals(_existing?: (cs.File | cs.Folder)[], _lookIn = UNSORTED_FOLDER): cs.File[] {
+  let result: cs.File[] = []
+  for (const entry of _lookIn.list()) {
+    if (entry instanceof cs.Folder)
+      result = result.concat(list_all_unsorted_portrayals(_existing, entry))
+    else if (entry instanceof cs.File)
+      result.push(entry)
+    else
+      throw new cs.AnyError(`Unexpected entry found: '${entry.isAt}' (expected either portrayals or subfolders containing portrayals)`)
+  }
+  result.sort((a, b) => a.last_modified().getTime() - b.last_modified().getTime());
+  return result;
+}
+
 
 
 export function tag_key_exists(_char: string): string | undefined {
@@ -193,6 +209,16 @@ export function tag_meaning_exists(_meaning: string): tag_t | undefined {
   return Object.values(TAGS_LOOKUP).find(value => value === _meaning)
 }
 
+
+
+export function create_portrayal(_persona: Persona, tags: string[], _fromUnsorted: cs.File): Portrayal {
+  const nextOpenIndex = portrayalsByPersona.get(_persona)?.length ?? 0
+  let tagsCharAsRow = ""
+  for (const tag of tags)
+    tagsCharAsRow += cs.or_err(tag_meaning_exists(tag), `Unknown tag '${tag}'`)
+  _fromUnsorted.move_self_into(new cs.Folder(`${_persona.where().isAt}/${nextOpenIndex}_${tagsCharAsRow}_${_fromUnsorted.extension()}`))
+  return new Portrayal(nextOpenIndex, _persona)
+}
 
 
 
@@ -225,30 +251,13 @@ export function read_A36() {
 
 
 
-export function read_A36_unsorted() {
-  out.suffix = "[read_A36_unsorted]"
-  out.print(`Reading unsorted files in '${UNSORTED_FOLDER.isAt}'...`)
-  for (const entry of UNSORTED_FOLDER.list()) {
-    if (!(entry instanceof cs.File || entry instanceof cs.Folder))
-      throw new cs.AnyError(`Unexpected entry found: '${entry.isAt}' (expected either portrayals or subfolders containing portrayals)`)
-    out.print(`Found unsorted entry: ${entry.isAt}`)
-    if (entry instanceof cs.File && !(entry.extension() in EXTENSION_TO_MEDIA))
-        throw new cs.AnyError(`Unsupported file extension '${entry.extension()}' in unsorted portrayal ${entry.isAt}`)
-    unsortedPortrayalsPaths.push(entry)
-  }
-  out.print(`Found ${unsortedPortrayalsPaths.length} unsorted portrayals.`)
-  unsortedPortrayalsPaths.sort((a, b) => a.last_modified().getTime() - b.last_modified().getTime())
-  out.print(`Sorted unsorted portrayals by last modified time.`)
-}
 
 
-
-export function letsGo() {
+export function lets_go() {
   console.log("Thank you so much for using the infamous and powerful Anti36Manager!")
   console.log("This software is still in early development, so please report any issues you find.")
   console.log("You can find the project at https://github.com/ZiggityZaza/Anti36Manager")
   console.log("Have fun! <3")
   console.log("Initializing...")
   read_A36()
-  read_A36_unsorted()
 }

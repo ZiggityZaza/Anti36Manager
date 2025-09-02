@@ -1,6 +1,6 @@
 {
   "name": "anti36manager",
-  "productName": "Wannabe electron app",
+  "productName": "Loading A36M",
   "version": "1.0.0",
   "description": "My Electron application description",
   "main": "./entryPointForElectron.js",

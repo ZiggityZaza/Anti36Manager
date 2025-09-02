@@ -65,24 +65,57 @@ export function sort_arr<T>(_array: Array<T>, _compareFn: (a: T, b: T) => number
 }
 
 
-export function or_err<T>(x: T | undefined, msg: string): T {
-  if (x === undefined) throw new AnyError(msg)
-  return x
+export function or_err<T>(_x: T | undefined, msg: string): T {
+  if (_x === undefined) throw new AnyError(msg)
+  return _x
 }
 
 
 
-export function to_str(x: unknown): string {
-  if (typeof x === "string")
-    return x
-  if (x === null || x === undefined)
-    return String(x)
+export function element_by_id(_id: string): HTMLElement {
+  const element = document.getElementById(_id);
+  if (!element)
+    throw new AnyError(`No element with id '${_id}' found.`);
+  return element;
+}
+
+
+
+export function input_element_by_id(_id: string): HTMLInputElement {
+  const element = document.getElementById(_id) as HTMLInputElement;
+  if (!element)
+    throw new AnyError(`No input field with id '${_id}' found.`);
+  return element;
+}
+
+
+
+export function elements_by_class(_class: string): HTMLElement[] {
+  const elements = document.getElementsByClassName(_class);
+  if (!elements)
+    throw new AnyError(`No elements with class '${_class}' found.`);
+  return Array.from(elements) as HTMLElement[];
+}
+
+
+
+export function to_str(_x: unknown): string {
+  if (typeof _x === "string")
+    return _x
+  if (_x === null || _x === undefined)
+    return String(_x)
   try {
-    return typeof (x as any).toString === "function" ? (x as any).toString() : JSON.stringify(x)
+    return typeof (_x as any).toString === "function" ? (_x as any).toString() : JSON.stringify(_x)
   } catch {
-    try { return JSON.stringify(x) }
-    catch { return String(x) }
+    try { return JSON.stringify(_x) }
+    catch { return String(_x) }
   }
+}
+
+
+
+export async function sleep(_ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, _ms));
 }
 
 
@@ -139,6 +172,7 @@ export const enum ANSII_ESCAPE {
   WHITE = "\u001b[37m"
 }
 export class Out {
+  silence: boolean = false
   suffix: string = ""
   prefix: string
   constructor(_prefix: string, _color?: ANSII_ESCAPE) {
@@ -147,8 +181,9 @@ export class Out {
       this.prefix = _color + this.prefix + ANSII_ESCAPE.RESET
   }
 
-  print(...args: any[]) {
-   console.log(`[${time_to_str()}]${this.prefix}${this.suffix}`, ...args)
+  print(..._args: any[]) {
+    if (!this.silence)
+      console.log(`[${time_to_str()}]${this.prefix}${this.suffix}`, ..._args)
   }
 }
 

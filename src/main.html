@@ -1,12 +1,54 @@
-<!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="UTF-8"/>
-    <script src="../dist/main.js"></script>
-    <title>electrrrrron</title>
-  </head>
-  <body>
-      <h1>Press this button in question</h1>
-      <div id="output"></div>
-  </body>
-</html>
+<!-- <!DOCTYPE html>
+<head>
+  <title>electrrrrron</title>
+  <meta charset="UTF-8"/>
+  <script src="../dist/main.js"></script>
+  <link rel="stylesheet" href="../src/main.css"/>
+</head>
+<body>
+  <div id="output"></div>
+  <div id="zurDong"></div>
+</body> -->
+
+<head>
+  <title>Anti36Manager</title>
+  <script src="../dist/main.js"></script>
+  <link rel="stylesheet" href="brazy.css">
+</head>
+
+
+
+<body>
+  <div id="workspace">
+    <r id="ws_panel_head">Preference Panel ('PP' for short)</r>
+    <div id="ws_panel">
+      <div id="tags_map"><!-- tags --></div>
+    </div>
+    <div id="ws_control_panel">
+      <div id="ws_control_panel_add_button" onclick="pressed_confirm_button()">Confirm</div>
+      <div id="ws_control_panel_switch_button" onclick="switch_mode()">Switch to sorting/filtering</div>
+    </div>
+    <div id="ws_input_panel">
+      <input list="origin_list" name="origin" id="originInputField" onchange="set_persona_datalist()" placeholder="Select an origin here">
+      <datalist id="origin_list"><!-- All origins --></datalist>
+      <input list="persona_list" name="persona" id="personaInputField" onchange="personaInputField_valid()" placeholder="The persona from that origin">
+      <datalist id="persona_list"><!-- it's personas --></datalist>
+    </div>
+
+    <r id="ws_below_head">Workspace</r>
+    <div id="ws_below">
+      <p>Enjoy!</p>
+    </div>
+  </div>
+
+
+
+
+
+  <div id="portrayal_previews">
+    <r id="portrayal_previews_title">All existing portrayals</r>
+    <div id="portrayal_elements">
+      <!-- Images and such -->
+    </div>
+  </div>
+</body>
