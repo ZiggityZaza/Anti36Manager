@@ -13,6 +13,7 @@ bn.lets_go()
 
 
 
+
 // Resources
 let isSortingMode = true
 let selectedPersonaFilters: bn.Persona[] = [] // Origins and personas to filter by
@@ -21,7 +22,7 @@ let selectedTags: bn.tag_t[] = []
 
 
 
-// Functions
+// Indirectly called by runtime
 function set_panel(title: string, portrayalsInside: cs.File[]): void {
   cs.element_by_id("portrayal_elements").innerHTML = "" // Reset
   cs.element_by_id("portrayal_previews_title").innerHTML = title
@@ -49,7 +50,6 @@ function set_panel(title: string, portrayalsInside: cs.File[]): void {
 }
 
 
-
 function set_persona_datalist(): void {
   const dataList = cs.input_element_by_id("persona_list")
   dataList.innerHTML = ""; // Needs semicolon
@@ -60,7 +60,6 @@ function set_persona_datalist(): void {
     dataList.appendChild(option)
   }
 }
-
 
 
 function personaInputField_valid(): boolean {
@@ -80,6 +79,7 @@ function personaInputField_valid(): boolean {
 
 
 
+// Directly called by user
 function switch_mode(): void {
   isSortingMode = !isSortingMode
   document.body.style.cursor = "wait"
@@ -104,6 +104,15 @@ function switch_mode(): void {
 
 
 
+function pressed_confirm_button(): void {
+  if (isSortingMode)
+    bn.out.print("Cannot confirm in sorting mode.")
+  else
+    bn.out.print("Confirmed selection in filter mode.")
+}
+
+
+
 
 // At startup
 window.addEventListener("load", () => {
@@ -117,9 +126,11 @@ window.addEventListener("load", () => {
     option.value = origin.name
     dataList.appendChild(option)
   }
+
+  cs.element_by_id("ws_below").innerHTML = "<p>Enjoy!</p>"
 })
 
 
 
 // Stupid work around
-Object.assign(window, { personaInputField_valid, set_persona_datalist, switch_mode })
+Object.assign(window, { personaInputField_valid, set_persona_datalist, switch_mode, pressed_confirm_button })

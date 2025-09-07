@@ -72,6 +72,18 @@ export function or_err<T>(_x: T | undefined, msg: string): T {
 
 
 
+export const TRIM_WITH = "..."
+export function shorten_begin(_str: string, _maxLen: number): string {
+  /*
+    Shorten string from the beginning if it
+    exceeds `_maxLen`
+  */
+  if (_maxLen <= TRIM_WITH.length) {}
+  return ""
+}
+
+
+
 export function element_by_id(_id: string): HTMLElement {
   const element = document.getElementById(_id);
   if (!element)

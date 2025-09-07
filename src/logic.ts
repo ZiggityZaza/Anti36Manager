@@ -9,19 +9,20 @@ export const enum MediaType {
   IMAGE = "IMAGE",
   VIDEO = "VIDEO"
 }
-export type tag_t = string // Key to represent tags
+export type tag_t = string // Key to represent 
 
+
+export const DEFAULT_A36_CONFIG_PATH = `${os.homedir()}${cs.pathSep}OneDrive\\Anti36Manager.json`
 export const A36M_CONFIGS: {
   galleryFolder: string // Path to gallery folder
   unsortedFolder: string // Path to unsorted folder
   tagsLookup: Record<tag_t, string>
   [extra: string]: any
-} = JSON.parse(new cs.File(os.homedir() + cs.pathSep + "Anti36Manager.json", true).read_text())
+} = JSON.parse(new cs.File(DEFAULT_A36_CONFIG_PATH).read_text())
 export const GALLERY_FOLDER = new cs.Folder(A36M_CONFIGS.galleryFolder)
 export const UNSORTED_FOLDER = new cs.Folder(A36M_CONFIGS.unsortedFolder)
 export const TAGS_LOOKUP: Record<tag_t, string> = A36M_CONFIGS.tagsLookup
 export const out: cs.Out = new cs.Out("[Anti36Manager]", cs.ANSII_ESCAPE.CYAN)
-
 
 
 export function toggle_out(): void {
