@@ -12,7 +12,7 @@ export const enum MediaType {
 export type tag_t = string // Key to represent 
 
 
-export const DEFAULT_A36_CONFIG_PATH = `${os.homedir()}${cs.pathSep}OneDrive\\Anti36Manager.json`
+export const DEFAULT_A36_CONFIG_PATH = `${os.homedir()}${cs.pathSep}Anti36Manager.json`
 export const A36M_CONFIGS: {
   galleryFolder: string // Path to gallery folder
   unsortedFolder: string // Path to unsorted folder

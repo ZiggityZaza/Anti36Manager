@@ -7,13 +7,31 @@ import * as os from "node:os"
 import { spawnSync } from "node:child_process"
 
 
-
-
-export function is_windows(): boolean {
-  return os.platform() === "win32"
+// Vanilla functions (regardless of Node or Web)
+export function find_self_in_arr<T>(_array: Array<T>, _lookFor: T): T | undefined {
+  return _array.find(item => item === _lookFor)
 }
-export function is_unix(): boolean {
-  return os.platform() === "linux" || os.platform() === "darwin"
+export function find_key_in_map<K, V>(_map: Map<K, V[]>, _key: K): V[] | undefined {
+  return _map.has(_key) ? _map.get(_key) : undefined
+}
+export function find_val_in_map<K, V>(_map: Map<K, V[]>, _value: V): K | undefined {
+  for (const [key, values] of _map.entries())
+    if (values.includes(_value))
+      return key
+  return undefined
+}
+
+
+
+export function add_val_to_map<K, V>(_map: Map<K, V[]>, _key: K, _value: V): void {
+  if (_map.has(_key))
+    _map.get(_key)!.push(_value)
+  else
+    _map.set(_key, [_value])
+}
+export function add_key_to_map<K, V>(_map: Map<K, V[]>, _key: K): void {
+  if (!_map.has(_key))
+    _map.set(_key, [])
 }
 
 
@@ -33,40 +51,15 @@ export function range(_from: number, _to: number, _step: number = 1): Array<numb
 
 
 
-export function find_self_in_arr<T>(_array: Array<T>, _lookFor: T): T | undefined {
-  return _array.find(item => item === _lookFor)
-}
-export function find_key_in_map<K, V>(_map: Map<K, V[]>, _key: K): V[] | undefined {
-  return _map.has(_key) ? _map.get(_key) : undefined
-}
-export function find_val_in_map<K, V>(_map: Map<K, V[]>, _value: V): K | undefined {
-  for (const [key, values] of _map.entries())
-    if (values.includes(_value))
-      return key
-  return undefined
-}
-
-
-export function add_val_to_map<K, V>(_map: Map<K, V[]>, _key: K, _value: V): void {
-  if (_map.has(_key))
-    _map.get(_key)!.push(_value)
-  else
-    _map.set(_key, [_value])
-}
-export function add_key_to_map<K, V>(_map: Map<K, V[]>, _key: K): void {
-  if (!_map.has(_key))
-    _map.set(_key, [])
-}
-
-
-
 export function sort_arr<T>(_array: Array<T>, _compareFn: (a: T, b: T) => number): Array<T> {
   return _array.slice().sort(_compareFn)
 }
 
 
-export function or_err<T>(_x: T | undefined, msg: string): T {
-  if (_x === undefined) throw new AnyError(msg)
+
+export function or_err<T>(_x: T | undefined | null, msg: string): T {
+  if (_x === undefined || _x === null)
+    throw new AnyError(msg)
   return _x
 }
 
@@ -80,33 +73,6 @@ export function shorten_begin(_str: string, _maxLen: number): string {
   */
   if (_maxLen <= TRIM_WITH.length) {}
   return ""
-}
-
-
-
-export function element_by_id(_id: string): HTMLElement {
-  const element = document.getElementById(_id);
-  if (!element)
-    throw new AnyError(`No element with id '${_id}' found.`);
-  return element;
-}
-
-
-
-export function input_element_by_id(_id: string): HTMLInputElement {
-  const element = document.getElementById(_id) as HTMLInputElement;
-  if (!element)
-    throw new AnyError(`No input field with id '${_id}' found.`);
-  return element;
-}
-
-
-
-export function elements_by_class(_class: string): HTMLElement[] {
-  const elements = document.getElementsByClassName(_class);
-  if (!elements)
-    throw new AnyError(`No elements with class '${_class}' found.`);
-  return Array.from(elements) as HTMLElement[];
 }
 
 
@@ -126,17 +92,17 @@ export function to_str(_x: unknown): string {
 
 
 
-export async function sleep(_ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, _ms));
-}
-
-
-
 export function time_to_str() {
   // Returns HH:MM:SS-DD:MM:YYYY
   const n = new Date()
   const p = (n: number) => n.toString().padStart(2, "0")
   return `${p(n.getHours())}:${p(n.getMinutes())}:${p(n.getSeconds())}-${p(n.getDate())}:${p(n.getMonth() + 1)}:${n.getFullYear()}`
+}
+
+
+
+export async function sleep(_ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, _ms));
 }
 
 
@@ -154,16 +120,6 @@ export function separate(_str: string, _sep: string): string[] {
   }
   result.push(current)
   return result
-}
-
-
-
-export class AnyError extends Error {
-  constructor(...msgs: unknown[]) {
-    const where = process.cwd()
-    const reason = msgs.map(to_str).join("")
-    super(`cslib::AnyError at ${where} because: ${reason}`)
-  }
 }
 
 
@@ -197,6 +153,32 @@ export class Out {
     if (!this.silence)
       console.log(`[${time_to_str()}]${this.prefix}${this.suffix}`, ..._args)
   }
+}
+
+
+
+export function read_json_as<Interface>(_jsonContentAsStr: string): Interface {
+  return JSON.parse(_jsonContentAsStr) as Interface
+}
+
+
+
+export class AnyError extends Error {
+  constructor(...msgs: unknown[]) {
+    const reason = msgs.map(to_str).join("")
+    super(`cslib::AnyError because: ${reason}`)
+  }
+}
+
+
+
+
+// Node specific (comment out if no node access)
+export function is_windows(): boolean {
+  return os.platform() === "win32"
+}
+export function is_unix(): boolean {
+  return os.platform() === "linux" || os.platform() === "darwin"
 }
 
 
@@ -497,7 +479,29 @@ export class File extends Road {
 
 
 
-export function read_json_as<Interface>(_file: File): Interface {
-  const content = _file.read_text()
-  return JSON.parse(content) as Interface
+
+// If DOM exists
+export namespace DOM {
+  export function byId<T extends HTMLElement>(id: string, elementType: new() => T): T {
+    const element = document.getElementById(id)
+    if (!element)
+      throw new AnyError(`Element not found with id: ${id}`)
+    if (!(element instanceof elementType))
+      throw new AnyError(`Element #${id} is not of type ${elementType.name}`)
+    return element as T
+  }
+
+  export function byClass<T extends HTMLElement>(className: string, elementType: new() => T): T[] {
+    const cleanClass = className.startsWith('.') ? className.slice(1) : className
+    const elements = document.querySelectorAll(`.${cleanClass}`)
+    const result: T[] = []
+
+    elements.forEach((element, index) => {
+      if (!(element instanceof elementType))
+        throw new AnyError(`Element at index ${index} with class '${cleanClass}' is not of type ${elementType.name}`)
+      result.push(element as T)
+    })
+    
+    return result
+  }
 }

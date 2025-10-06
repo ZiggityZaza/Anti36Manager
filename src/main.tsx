@@ -3,6 +3,7 @@
 // import * as ReactDOM from "react-dom/client" // React on idle
 import * as cs from "./cslib.js"
 import * as bn from "./logic.js"
+import type { HTMLElementType } from "react"
 
 
 
@@ -20,19 +21,65 @@ let selectedPersonaFilters: bn.Persona[] = [] // Origins and personas to filter 
 let selectedTags: bn.tag_t[] = []
 
 
+// Important HTMLElements (indent by hierarchy in the HTML body)
+const workspace = cs.DOM.byId("workspace", HTMLDivElement)
+  const wsPanelHead = cs.DOM.byId("ws_panel_head", HTMLParagraphElement)
+  const wsPanel = cs.DOM.byId("ws_panel", HTMLDivElement)
+    const tagsMap = cs.DOM.byId("tags_map", HTMLDivElement)
+      const tag = cs.DOM.byClass("tag", HTMLDivElement)
+  const wsControlPanel = cs.DOM.byId("ws_control_panel", HTMLDivElement)
+    const wsControlPanelAddButton = cs.DOM.byId("ws_control_panel_add_button", HTMLDivElement) // Behaves like a button
+    const wsControlPanelSwitchButton = cs.DOM.byId("ws_control_panel_switch_button", HTMLDivElement) // Behaves like a button
+  const wsInputPanel = cs.DOM.byId("ws_input_panel", HTMLDivElement)
+    const originInputField = cs.DOM.byId("originInputField", HTMLInputElement)
+    const originList = cs.DOM.byId("origin_list", HTMLDataListElement)
+    const personaInputField = cs.DOM.byId("personaInputField", HTMLInputElement)
+    const personaList = cs.DOM.byId("persona_list", HTMLDataListElement)
+  const wsBelowHead = cs.DOM.byId("ws_below_head", HTMLParagraphElement)
+  const wsBelow = cs.DOM.byId("ws_below", HTMLDivElement)
+    const initMessage = cs.DOM.byId("initMessage", HTMLParagraphElement)
+
+const portrayalPreviews = cs.DOM.byId("portrayal_previews", HTMLDivElement)
+  const portrayalPreviewsTitle = cs.DOM.byId("portrayal_previews_title", HTMLParagraphElement)
+  const portrayalElements = cs.DOM.byId("portrayal_elements", HTMLDivElement)
+    const portrayalElement: (HTMLVideoElement | HTMLImageElement)[] =
+      rawElements.map(el >= el as HTMLVideoElement | HTMLImageElement)
+
+    // const portrayalElement = cs.DOM.byClass("portrayal_element", HTMLVideoElement | HTMLImageElement)
 
 
-// Indirectly called by runtime
-function set_panel(title: string, portrayalsInside: cs.File[]): void {
+
+// Helpers
+function insertIntoSidebar(source: cs.File): void {
+
+}
+
+
+
+
+
+
+
+
+
+// Helpers
+function set_panel(selectedFiles: cs.File[], newTitle: string | undefined): void {
+  /*
+    Clear and populate the sidebar with new imgs
+    or vids regardless of source.
+  */
+  bn.out.print()
+
   cs.element_by_id("portrayal_elements").innerHTML = "" // Reset
-  cs.element_by_id("portrayal_previews_title").innerHTML = title
+  if (newTitle)
+    cs.element_by_id("portrayal_previews_title").innerHTML = newTitle
 
-  for (const portrayal of portrayalsInside) {
-    bn.out.print(`Processing ${portrayal.isAt}`)
-    const type = cs.or_err(bn.EXTENSION_TO_MEDIA[portrayal.extension()], `Unsupported file extension '${portrayal.extension()}' of ${portrayal.isAt}`)
+  for (const media of selectedFiles) {
+    bn.out.print(`Processing ${media.isAt}`)
+    const type = cs.or_err(bn.EXTENSION_TO_MEDIA[media.extension()], `Unsupported file extension '${media.extension()}' of ${media.isAt}`)
     const display = document.createElement(type === bn.MediaType.IMAGE ? "img" : "video")
     display.className = "portrayal_element"
-    display.src = portrayal.isAt
+    display.src = media.isAt
     display.onclick = () => {
       const workspaceMedia = document.createElement(type === bn.MediaType.IMAGE ? "img" : "video")
       if (workspaceMedia instanceof HTMLVideoElement) {
@@ -41,7 +88,7 @@ function set_panel(title: string, portrayalsInside: cs.File[]): void {
         workspaceMedia.muted = true
         workspaceMedia.loop = true
       }
-      workspaceMedia.src = portrayal.isAt
+      workspaceMedia.src = media.isAt
       workspaceMedia.id = "portrayal_element_selected"
       cs.element_by_id("ws_below").innerHTML = workspaceMedia.outerHTML
     }
@@ -76,6 +123,12 @@ function personaInputField_valid(): boolean {
   }
   return true
 }
+
+
+
+// Vague functionalities
+
+
 
 
 
