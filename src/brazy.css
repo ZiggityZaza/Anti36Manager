@@ -12,6 +12,8 @@ body {
 
     scrollbar-color: #aaaaaa rgba(0, 0, 0, 0);
 }
+
+
 @keyframes gradientAnimation {
     0% { background-position: 0% 50%; }
     50% { background-position: 100% 50%; }
@@ -20,20 +22,22 @@ body {
 
 
 
-
-#workspace {
+main {
+    /* Box alignment */
     height: 94%;
     width: 60%;
     margin-top: 2%;
     margin-right: 2%;
     margin-left: 2%;
 
+    /* Box settings */
     box-shadow: 0 8px 8px 0 rgba(0,0,0,0.2);
     background-color: rgb(53, 53, 53);
     border-radius: 5px;
     overflow: auto;
 
-    }#ws_panel_head {
+
+    }#panel-title {
         display: block;
         font-size: 4vmin;
         font-family: monospace, sans-serif;
@@ -41,42 +45,42 @@ body {
         background-color: rgb(70, 69, 74);
         text-align:center;
         box-shadow: 0 8px 8px 0 rgba(0,0,0,0.2);
-    }
-    #ws_panel {
-        width: -webkit-fill-available;
-    }
-    #tags_map {
+        margin: 0;
+    
+    
+    }#tags-map {
         display: flex;
         flex-wrap: wrap;
         justify-content: center;
         align-items: space-between;
-    }
-    .tag {
+    
+    
+    }.tag-button {
         font-family: monospace, sans-serif;
         padding-top: 1vh;
         padding-bottom: 1vh;
         cursor: pointer;
-        width: 14%;
-        font-size: 2vh;
+        width: 13vmin;
+        font-size: 2vmin;
         border: 1px solid rgba(0,0,0,0.2);;
         background-color: rgb(151, 151, 151);
         transition: background-color 0.3s;
         display: table;
         user-select: none;
-    }
-    .tag:hover {
+    }.tag-button:hover {
         background-color: lightblue;
         border: 1px solid rgba(0, 0, 0, 0);
         transition: background-color 0.3s;
     }
 
-    #ws_control_panel {
+
+    #buttons-panel {
         display: flex;
         justify-content: space-between;
         align-items: center;
         padding: 1vh;
 
-        }#ws_control_panel_add_button {
+        }#confirm {
             width: 100%;
             font-family: monospace, sans-serif;
             font-size: 2vmin;
@@ -90,12 +94,12 @@ body {
             overflow: hidden;
             justify-content: center;
         }
-        #ws_control_panel_add_button:hover {
+        #confirm:hover {
             background-color: rgb(0, 167, 42);
             border: 1px solid rgba(0, 0, 0, 0);
             transition: background-color 0.3s;
         }
-        #ws_control_panel_switch_button {
+        #switch-mode {
             width: 100%;
             font-family: monospace, sans-serif;
             font-size: 2vmin;
@@ -108,18 +112,18 @@ body {
             white-space: nowrap;
             overflow: hidden;
         }
-        #ws_control_panel_switch_button:hover {
+        #switch-mode:hover {
             background-color: rgb(218, 143, 30);
             border: 1px solid rgba(0, 0, 0, 0);
             transition: background-color 0.3s;
         }
 
-    #ws_input_panel {
+    #inputs-panel {
         display: flex;
         justify-content: space-between;
         align-items: center;
         padding: 1vh;
-        } #originInputField {
+        }#origin-select {
             transition: background-color 1s;
             margin-bottom: 1vh;
             padding: 1vh;
@@ -129,7 +133,7 @@ body {
             color: white;
             background-color: rgb(70, 69, 74);
         }
-        #personaInputField {
+        #persona-select {
             display: inline;
             transition: background-color 1s;
             margin-bottom: 1vh;
@@ -139,23 +143,11 @@ body {
             border-radius: 10px;
             color: white;
             background-color: rgb(70, 69, 74);
-}
+    }
 
-    #ws_below_head {
-        display: block;
-        font-size: 3vmin;
-        font-family: monospace, sans-serif;
+    #preview-target {
         color: rgb(247, 247, 247);
-        background-color: rgb(70, 69, 74);
-        text-align:center;
-        box-shadow: 0 8px 8px 0 rgba(0,0,0,0.2);
-    }
-    #ws_below {
-        color: rgb(247, 247, 247);
-        width: -webkit-fill-available;
         font-size: 4vmin;
-    }
-    #portrayal_element_selected {
         width: 100%;
         height: auto;
 }
@@ -163,7 +155,7 @@ body {
 
 
 
-#portrayal_previews {
+aside {
     /* Box alignment */
     height: 94%;
     width: 35%;
@@ -178,33 +170,15 @@ body {
     background-color: rgb(53, 53, 53);
     border-radius: 5px;
 
-    }#portrayal_previews_title {
-        display: block;
-        /* Font settings */
-        font-size: 4vmin;
-        font-family: monospace, sans-serif;
-        color: rgb(247, 247, 247);
-
-        background-color: rgb(70, 69, 74);
-        text-align:center;
-        box-shadow: 0 8px 8px 0 rgba(0,0,0,0.2);
-        padding: 2%
     }
-    #portrayal_elements {
-        display: flex;
-        flex-wrap: wrap;
-        justify-content: center;
-        align-items: space-between;
-        margin: 3%;
-    }
-    .portrayal_element {
+    .preview {
         opacity: 0.5;
         font-size: 100%;
         width: 90%;
         height: auto;
         transition: transform 0.3s ease-in-out;
     }
-    .portrayal_element:hover {
+    .preview:hover {
         transform: scale(1.05);
         transition: transform 0.2s;
         cursor: pointer;

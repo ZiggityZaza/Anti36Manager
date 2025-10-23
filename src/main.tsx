@@ -7,53 +7,59 @@ import type { HTMLElementType } from "react"
 
 
 
-
 // Start backend
 bn.lets_go()
-
-
 
 
 
 // Resources
 let isSortingMode = true
 let selectedPersonaFilters: bn.Persona[] = [] // Origins and personas to filter by
-let selectedTags: bn.TagChar[] = []
+let selectedTags: bn.TagT[] = []
 
 
 
-// Important HTMLElements (indent by hierarchy in the HTML body)
-const workspace = cs.DOM.by_id("workspace", HTMLDivElement)
-  const wsPanelHead = cs.DOM.by_id("ws_panel_head", HTMLParagraphElement)
-  const wsPanel = cs.DOM.by_id("ws_panel", HTMLDivElement)
-    const tagsMap = cs.DOM.by_id("tags_map", HTMLDivElement)
-      function get_tag_elements(): HTMLDivElement[] { // Filled and read at runtime
-        return cs.DOM.by_class("tag", HTMLDivElement)
-      }
-  const wsControlPanel = cs.DOM.by_id("ws_control_panel", HTMLDivElement)
-    const wsControlPanelAddButton = cs.DOM.by_id("ws_control_panel_add_button", HTMLDivElement) // Behaves like a button
-    const wsControlPanelSwitchButton = cs.DOM.by_id("ws_control_panel_switch_button", HTMLDivElement) // Behaves like a button
-  const wsInputPanel = cs.DOM.by_id("ws_input_panel", HTMLDivElement)
-    const originInputField = cs.DOM.by_id("originInputField", HTMLInputElement)
-    const originList = cs.DOM.by_id("origin_list", HTMLDataListElement)
-    const personaInputField = cs.DOM.by_id("personaInputField", HTMLInputElement)
-    const personaList = cs.DOM.by_id("persona_list", HTMLDataListElement)
-  const wsBelowHead = cs.DOM.by_id("ws_below_head", HTMLParagraphElement)
-  const wsBelow = cs.DOM.by_id("ws_below", HTMLDivElement)
-    const initMessage = cs.DOM.by_id("initMessage", HTMLParagraphElement)
-      // alternatively...
-    const portrayalElementSelectedId = "portrayal_element_selected" // Purely for styling purposes
+// Handle UI elements 
+const UI = {
+  /*
+    Contains references to important UI elements and
+    functions to manipulate them.
+  */
 
-const portrayalPreviews = cs.DOM.by_id("portrayal_previews", HTMLDivElement)
-  const portrayalPreviewsTitle = cs.DOM.by_id("portrayal_previews_title", HTMLParagraphElement)
-  const portrayalElements = cs.DOM.by_id("portrayal_elements", HTMLDivElement)
-    const portrayalElementId = "portrayal_element"
-    function get_portrayal_elements(): (HTMLVideoElement | HTMLImageElement)[] { // Filled and read at runtime
-      return [
-        ...cs.DOM.by_class(portrayalElementId, HTMLImageElement),
-        ...cs.DOM.by_class(portrayalElementId, HTMLVideoElement),
-      ]
-    }
+  // Dynamically accessed elements
+  originSelect: cs.DOM.by_id("origin-select", HTMLInputElement),
+  originList: cs.DOM.by_id("origin-list", HTMLDataListElement),
+  personaSelect: cs.DOM.by_id("persona-select", HTMLInputElement),
+  personaList: cs.DOM.by_id("persona-list", HTMLDataListElement),
+  previewTarget: cs.DOM.by_id("preview-target", HTMLElement),
+  previews: cs.DOM.by_tag("aside")[0]!, // There is only one aside element
+
+
+  // Static elements (must be configured at startup)
+  confirmButton: cs.DOM.by_id("confirm", HTMLButtonElement),
+  switchModeButton: cs.DOM.by_id("switch-mode", HTMLButtonElement),
+  tagButtons: new Map<bn.TagT, HTMLButtonElement>(),
+
+
+
+  // Helpers to configure static elements
+  insert_tag_buttons_to_dom: function (): void {
+    const section = cs.DOM.by_id("tags-map", HTMLElement) // <section>
+    for (const [tagAsChar, meaning] of Object.entries(bn.TAGS_LOOKUP)) {
+      const button = document.createElement("button")
+      button.textContent = meaning
+      section.appendChild(button)
+      this.tagButtons.set(tagAsChar as bn.TagT, button) // Yes, 'char' is the key from TAGS_LOOKUP
+      button.addEventListener("click", () => {
+        this
+
+
+
+} as const
+
+
+
+
 
 
 

@@ -1,5 +1,7 @@
 /*
   Contains the logic for managing media files
+  Note:
+    For consistency, don't use Web/DOM-related code here
 */
 import * as os from "node:os"
 import * as path from "node:path"
@@ -10,19 +12,16 @@ export const enum MediaT {
   IMAGE = "IMAGE",
   VIDEO = "VIDEO"
 }
-export type TagChar = string // Key to represent 
 
 
 export const DEFAULT_A36_CONFIG_PATH = path.join(os.homedir(), "Anti36Manager.json")
 export const A36M_CONFIGS: {
   galleryFolder: string // Path to gallery folder
   unsortedFolder: string // Path to unsorted folder
-  tagsLookup: Record<TagChar, string>
   [extra: string]: any
 } = JSON.parse(new cs.File(DEFAULT_A36_CONFIG_PATH).read_text())
 export const GALLERY_FOLDER = new cs.Folder(A36M_CONFIGS.galleryFolder)
 export const UNSORTED_FOLDER = new cs.Folder(A36M_CONFIGS.unsortedFolder)
-export const TAGS_LOOKUP: Record<TagChar, string> = A36M_CONFIGS.tagsLookup
 export const out: cs.Out = new cs.Out("[Anti36Manager]", cs.ANSII_ESCAPE.CYAN)
 
 
@@ -32,7 +31,7 @@ export function toggle_out(): void {
 
 
 // Lookups
-export const EXTENSION_TO_MEDIA: Record<string, MediaT> = {
+export const EXTENSION_TO_MEDIA = {
   ".mp4": MediaT.VIDEO,
   ".webm": MediaT.VIDEO,
   ".mkv": MediaT.VIDEO,
@@ -44,7 +43,15 @@ export const EXTENSION_TO_MEDIA: Record<string, MediaT> = {
   ".gif": MediaT.IMAGE,
   ".bmp": MediaT.IMAGE,
   ".webp": MediaT.IMAGE
-}
+} as const
+export type ExtT = keyof typeof EXTENSION_TO_MEDIA
+export const TAGS_LOOKUP = {
+  'A': "_A", /*...*/ 'Z': "_Z",
+  'a': "_a", /*...*/ 'z': "_z",
+  '0': "_0", /*...*/ '9': "_9"
+} as const
+export type TagT = keyof typeof TAGS_LOOKUP
+
 
 
 // Access
@@ -53,7 +60,7 @@ export let portrayalsByPersona: Map<Persona, Portrayal[]> = new Map(); // Owns p
 
 
 // Containers for easy access
-export let portrayalsByTag: Map<TagChar, Portrayal[]> = new Map();
+export let portrayalsByTag: Map<TagT, Portrayal[]> = new Map();
 export let portrayalsByType: Map<MediaT, Portrayal[]> = new Map();
 
 
@@ -182,25 +189,25 @@ export class Portrayal {
 
 
   type(): MediaT {
-    if (!EXTENSION_TO_MEDIA[this.where().extension()])
+    if (!EXTENSION_TO_MEDIA[this.where().extension() as ExtT])
       throw new MediaErr(this, `Unsupported file extension '${this.where().extension()}'`)
-    return EXTENSION_TO_MEDIA[this.where().extension()]!
+    return EXTENSION_TO_MEDIA[this.where().extension() as ExtT]!
   }
 
 
-  tags(): TagChar[] {
+  tags(): TagT[] {
     // Determine own tags
     const tagsRaw = cs.separate(this.where().name(), '_').at(1) // Something like "1a2B"
     if (tagsRaw === undefined)
       throw new MediaErr(this, `Invalid filename format, no tags found`)
 
-    let existingTags: TagChar[] = []
+    let existingTags: TagT[] = []
     for (const char of tagsRaw) {
       if (!(char in TAGS_LOOKUP))
         throw new MediaErr(this, `Invalid tag character '${char}' found`)
-      if (existingTags.includes(char))
+      if (existingTags.includes(char as TagT))
         throw new MediaErr(this, `Duplicate tag '${char}' found`)
-      existingTags.push(char)
+      existingTags.push(char as TagT)
     }
     return existingTags
   }
@@ -244,11 +251,11 @@ export function tag_key_exists(_char: string): string | undefined {
   return Object.keys(TAGS_LOOKUP).find(key => key === _char)
 }
 
-export function tag_meaning_exists(_meaning: string): TagChar | undefined {
+export function tag_meaning_exists(_meaning: string): TagT | undefined {
   /*
     Find `_meaning` as value in TAGS_LOOKUP
   */
-  return Object.values(TAGS_LOOKUP).find(value => value === _meaning)
+  return Object.entries(TAGS_LOOKUP).find(([_, value]) => value === _meaning)?.[0] as TagT | undefined
 }
 
 

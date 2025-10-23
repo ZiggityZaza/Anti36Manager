@@ -1,15 +1,3 @@
-<!-- <!DOCTYPE html>
-<head>
-  <title>electrrrrron</title>
-  <meta charset="UTF-8"/>
-  <script src="../dist/main.js"></script>
-  <link rel="stylesheet" href="../src/main.css"/>
-</head>
-<body>
-  <div id="output"></div>
-  <div id="zurDong"></div>
-</body> -->
-
 <head>
   <title>Anti36Manager</title>
   <script defer src="../dist/main.js"></script>
@@ -19,36 +7,44 @@
 
 
 <body>
-  <div id="workspace">
-    <p id="ws_panel_head">Preference Panel ('PP' for short)</p>
-    <div id="ws_panel">
-      <div id="tags_map"><!-- .tag --></div>
-    </div>
-    <div id="ws_control_panel">
-      <div id="ws_control_panel_add_button" onclick="pressed_confirm_button()">Confirm</div>
-      <div id="ws_control_panel_switch_button" onclick="switch_mode()">Switch to sorting/filtering</div>
-    </div>
-    <div id="ws_input_panel">
-      <input list="origin_list" name="origin" id="originInputField" onchange="set_persona_datalist()" placeholder="Select an origin here">
-      <datalist id="origin_list"><!-- All origins --></datalist>
-      <input list="persona_list" name="persona" id="personaInputField" onchange="personaInputField_valid()" placeholder="The persona from that origin">
-      <datalist id="persona_list"><!-- it's personas --></datalist>
-    </div>
+  <main> <!-- Workspace -->
+    <p id="panel-title">Preference Panel (aka. PP)</p>
+    <section id="tags-map">
+      <button type="button" class="tag-button"> ... </button>
+      <!-- <button type="button" class="tag"> ... </button> -->
+    </section>
 
-    <p id="ws_below_head">Workspace</p>
-    <div id="ws_below">
-      <p id="initMessage">Loading... (probably exception occured)</p>
-    </div>
-  </div>
+    <form>
+      <section id="buttons-panel">
+        <button type="submit" id="confirm" onclick="console.log('Confirmed')">Confirm</button>
+        <button type="button" id="switch-mode" onclick="console.log('Switching')">Switch to sorting/filtering</button>
+      </section>
+
+      <section id="inputs-panel">
+        <input list="origin-list" id="origin-select" placeholder="Select an origin here" required>
+        <datalist id="origin-list">
+          <option value="-- All origins --">
+          <!-- <option value="-- All origins --"> -->
+        </datalist>
+
+        <input list="persona-list" id="persona-select" placeholder="The persona from that origin" required>
+        <datalist id="persona-list">
+          <option value="-- All personas --">
+          <!-- <option value="-- All personas --"> -->
+        </datalist>
+      </section>
+    </form>
+
+
+    <!-- Can also be an img/video when selected -->
+    <p id="preview-target">Loading... (probably exception occured)</p>
+  </main>
 
 
 
-
-
-  <div id="portrayal_previews">
-    <r id="portrayal_previews_title">All existing portrayals</r>
-    <div id="portrayal_elements">
-      <!-- Images and such -->
-    </div>
-  </div>
+  <aside>
+    <img class="preview" src="https://developers.elementor.com/docs/assets/img/elementor-placeholder-image.png" alt="Portrayal 1">
+    <img class="preview" src="https://developers.elementor.com/docs/assets/img/elementor-placeholder-image.png" alt="Portrayal 1">
+    <!-- Images and such -->
+  </aside>
 </body>

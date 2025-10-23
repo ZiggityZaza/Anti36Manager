@@ -87,7 +87,7 @@ export function sort_arr<T>(_array: Array<T>, _compareFn: (a: T, b: T) => number
 
 
 
-export function or_err<T>(_x: T | undefined | null, _msg: string, ErrCtor: new (msg: string) => Error | Error): T {
+export function or_err<T>(_x: T | undefined | null, _msg: string, ErrCtor: new (msg: string) => Error = Error): T {
   if (_x === undefined || _x === null)
     throw new ErrCtor(_msg)
   return _x
@@ -484,7 +484,7 @@ export class File extends Road {
 export namespace DOM {
   export class DOMErr extends Error {
     constructor(_identifier: string, _msg: string) {
-      super(`cslib.DOMErr from class or id '${_identifier}' because: ${_msg}`)
+      super(`cslib.DOMErr from type, class or id '${_identifier}' because: ${_msg}`)
       LAST_ERROR = this
     }
   }
@@ -517,18 +517,7 @@ export namespace DOM {
   }
 
 
-
-  // export function by_class_HTMLVidEl_Or_HTMLImgEl(arg0: string, arg1: number): (HTMLVideoElement | HTMLImageElement)[] {
-  //   const rawElements = document.getElementsByClassName(arg0)
-  //   const result: (HTMLVideoElement | HTMLImageElement)[] = []
-  //   for (let i = 0; i < rawElements.length; i++) {
-  //     const el = rawElements.item(i)
-  //     if (el instanceof HTMLVideoElement || el instanceof HTMLImageElement) {
-  //       result.push(el)
-  //     } else {
-  //       throw new DOMErr(arg0, `Type missmatch at index ${i}: Element is not of type HTMLVideoElement or HTMLImageElement`)
-  //     }
-  //   }
-  //   return result
-  // }
+  export function by_tag<K extends keyof HTMLElementTagNameMap>(_tagName: K): HTMLElementTagNameMap[K][] {
+    return Array.from(document.getElementsByTagName(_tagName))
+  }
 }
