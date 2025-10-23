@@ -7,6 +7,12 @@ import * as os from "node:os"
 import { spawnSync } from "node:child_process"
 
 
+
+// Helper just in case
+export let LAST_ERROR: Error | null = null // Only works for throws with this lib
+
+
+
 // Vanilla functions (regardless of Node or Web)
 export function find_self_in_arr<T>(_array: Array<T>, _lookFor: T): T | undefined {
   return _array.find(item => item === _lookFor)
@@ -19,6 +25,30 @@ export function find_val_in_map<K, V>(_map: Map<K, V[]>, _value: V): K | undefin
     if (values.includes(_value))
       return key
   return undefined
+}
+
+
+
+export function to_str(_x: unknown): string {
+  if (typeof _x === "string")
+    return _x
+  if (_x === null || _x === undefined)
+    return String(_x)
+  try {
+    return typeof (_x as any).toString === "function" ? (_x as any).toString() : JSON.stringify(_x)
+  } catch {
+    try { return JSON.stringify(_x) }
+    catch { return String(_x) }
+  }
+}
+
+
+
+export abstract class AnyError extends Error {
+  constructor(_msg: string) {
+    super(`cslib.AnyError because: ${_msg}`)
+    LAST_ERROR = this
+  }
 }
 
 
@@ -36,7 +66,9 @@ export function add_key_to_map<K, V>(_map: Map<K, V[]>, _key: K): void {
 
 
 
-export function range(_from: number, _to: number, _step: number = 1): Array<number> {
+export function range(_from: number, _to?: number, _step: number = 1): Array<number> {
+  if (_to === undefined)
+    [_from, _to] = [0, _from] // If only one way
   let result: Array<number> = []
   if (_from < _to)
     for (let i = _from; i < _to; i += _step)
@@ -44,8 +76,6 @@ export function range(_from: number, _to: number, _step: number = 1): Array<numb
   else if (_from > _to)
     for (let i = _from; i > _to; i -= _step)
       result.push(i)
-  else
-    return result
   return result
 }
 
@@ -57,9 +87,9 @@ export function sort_arr<T>(_array: Array<T>, _compareFn: (a: T, b: T) => number
 
 
 
-export function or_err<T>(_x: T | undefined | null, msg: string): T {
+export function or_err<T>(_x: T | undefined | null, _msg: string, ErrCtor: new (msg: string) => Error | Error): T {
   if (_x === undefined || _x === null)
-    throw new AnyError(msg)
+    throw new ErrCtor(_msg)
   return _x
 }
 
@@ -73,21 +103,6 @@ export function shorten_begin(_str: string, _maxLen: number): string {
   */
   if (_maxLen <= TRIM_WITH.length) {}
   return ""
-}
-
-
-
-export function to_str(_x: unknown): string {
-  if (typeof _x === "string")
-    return _x
-  if (_x === null || _x === undefined)
-    return String(_x)
-  try {
-    return typeof (_x as any).toString === "function" ? (_x as any).toString() : JSON.stringify(_x)
-  } catch {
-    try { return JSON.stringify(_x) }
-    catch { return String(_x) }
-  }
 }
 
 
@@ -163,27 +178,13 @@ export function read_json_as<Interface>(_jsonContentAsStr: string): Interface {
 
 
 
-export class AnyError extends Error {
-  constructor(...msgs: unknown[]) {
-    const reason = msgs.map(to_str).join("")
-    super(`cslib::AnyError because: ${reason}`)
-  }
-}
-
-
-
 
 // Node specific (comment out if no node access)
-export function is_windows(): boolean {
-  return os.platform() === "win32"
-}
-export function is_unix(): boolean {
-  return os.platform() === "linux" || os.platform() === "darwin"
-}
+export const IS_WINDOWS = os.platform() === "win32"
 
 
 
-export const enum RoadStatus {
+export const enum RoadT {
   FILE = "FILE",
   FOLDER = "FOLDER",
   BLOCK_DEVICE = "BLOCK_DEVICE",
@@ -192,53 +193,81 @@ export const enum RoadStatus {
   FIFO = "FIFO",
   SOCKET = "SOCKET"
 }
-type road_t = Road | Folder | BizarreRoad
-export const pathSep = is_windows() ? "\\" : "/"
+export function to_RoadT(_pathorMode: string | number): RoadT {
+  const mode = typeof _pathorMode === "string" ? fs.lstatSync(_pathorMode).mode : _pathorMode
+  switch (mode & fs.constants.S_IFMT) {
+    case fs.constants.S_IFREG: return RoadT.FILE
+    case fs.constants.S_IFDIR: return RoadT.FOLDER
+    case fs.constants.S_IFBLK: return RoadT.BLOCK_DEVICE
+    case fs.constants.S_IFCHR: return RoadT.CHAR_DEVICE
+    case fs.constants.S_IFLNK: return RoadT.SYMLINK
+    case fs.constants.S_IFIFO: return RoadT.FIFO
+    case fs.constants.S_IFSOCK: return RoadT.SOCKET
+    default: throw new Error(`Unknown mode type ${mode} for path/mode: '${_pathorMode}'`)
+  }
+}
+
+export class RoadErr extends Error {
+  /*
+    Custom error class involving problematic attempts
+    to handle the underlying Road
+  */
+  readonly self: Road
+  constructor(_self: Road, _because: unknown) {
+    super(`cslib.RoadErr (path: '${_self.isAt}', type: ${_self.type()}) because: ${_because}`)
+    this.self = _self
+    LAST_ERROR = this
+  }
+}
+
+export function road_factory(_lookFor: string): Road {
+  const entryType = to_RoadT(_lookFor)
+  if (entryType === RoadT.FOLDER)
+    return new Folder(_lookFor)
+  else if (entryType === RoadT.FILE)
+    return new File(_lookFor)
+  else
+    return new BizarreRoad(_lookFor)
+}
+
+
 export abstract class Road {
   /*
-    Represents an entry on the disk with
-    extra methods to manage it
+    Abstract base class for filesystem entries.
+    Represents a path in the filesystem and provides
+    methods to manage it. Think of it as a pointer
+    for stuff on disk.
     Note:
-      Not turned into an abstract class so
-      it can be instantiated directly for
-      other file types such as pipes
+      Copying/Moving/changing the object won't change
+      the represented entry on the disk.
+    Example:
+      0x123 as int* -> 42 those 4 bytes on stack/heap/seg/reg/...
+      File("/ex.txt") -> the actual file on disk
   */
   isAt: string
 
 
-  constructor(_lookFor: string, _shouldBeOfType?: RoadStatus) {
+  constructor(_lookFor: string) {
     /*
       Find and resolve the absolute path of _lookFor
       with optional check to _shouldBeOfType
     */
+    if (!fs.existsSync(_lookFor))
+      throw new RoadErr(this, "Not found")
     this.isAt = path.resolve(_lookFor)
-    if (_shouldBeOfType)
-      if (this.self_type() !== _shouldBeOfType)
-        throw new AnyError(`Expected type "${_shouldBeOfType}" from "${this.isAt}" but got "${this.self_type()}"`)
   }
 
 
-  abstract cpy(): Road
-  del(): void {} // Skipped because nothing to destruct
+  abstract exists(): boolean
 
 
-  self_type(): RoadStatus {
-    switch (fs.lstatSync(this.isAt).mode & fs.constants.S_IFMT) {
-      case fs.constants.S_IFREG: return RoadStatus.FILE
-      case fs.constants.S_IFDIR: return RoadStatus.FOLDER
-      case fs.constants.S_IFBLK: return RoadStatus.BLOCK_DEVICE
-      case fs.constants.S_IFCHR: return RoadStatus.CHAR_DEVICE
-      case fs.constants.S_IFLNK: return RoadStatus.SYMLINK
-      case fs.constants.S_IFIFO: return RoadStatus.FIFO
-      case fs.constants.S_IFSOCK: return RoadStatus.SOCKET
-      default: throw new AnyError(`Unknown road type ${fs.lstatSync(this.isAt).mode} for path: ${this.isAt}`)
-    }
+  type(): RoadT {
+    return to_RoadT(this.isAt)
   }
 
 
-  last_modified(): Date {
-    const st = fs.statSync(this.isAt)
-    return st.mtime
+  depth(): number {
+    return this.isAt.split(path.sep).length - 1
   }
 
 
@@ -247,13 +276,26 @@ export abstract class Road {
   }
 
 
-  parent(): Folder {
-    return new Folder(path.dirname(this.isAt))
+  last_modified(): Date {
+    return fs.statSync(this.isAt).mtime
+  }
+  created_on(): Date {
+    return fs.statSync(this.isAt).birthtime
   }
 
 
-  depth(): number {
-    return this.isAt.split(path.sep).length - 1
+  stats(): fs.Stats {
+    return fs.statSync(this.isAt)
+  }
+
+
+  cpy(_prevPath = this.isAt): this {
+    return new (this.constructor as any)(_prevPath) as this
+  }
+
+
+  parent(): Folder {
+    return new Folder(path.dirname(this.isAt))
   }
 
 
@@ -263,12 +305,12 @@ export abstract class Road {
       Example:
         const f = new Folder("/root/projects/folder")
         const root: Folder = f.layer(0)
-        const parent: Folder = f.layer(f.depth()-1)
+        const parent: Folder = f.layer(f.depth() - 1) // 3 - 1
     */
-    let parent: Folder = new Folder("../") // Placeholder
+    let parent: Folder = new Folder("./") // Dummy initialization
     if (_index >= this.depth() || _index < 0)
-      throw new AnyError(`Trying to reach (${_index}) but depth is ${this.depth()}`)
-    for (const _ of range(0, this.depth() - _index))
+      throw new RoadErr(this, `Invalid index: Tried ${_index}, but max is ${this.depth() - 1}`)
+    for (let _ of range(this.depth() - _index))
       parent = parent.parent()
     return parent
   }
@@ -276,17 +318,41 @@ export abstract class Road {
 
   rename_self_to(_newName: string): void {
     if (_newName.includes(path.sep))
-      throw new AnyError(`Renaming to a path "${_newName}" is not allowed (_newName includes path.sep)`)
+      throw new RoadErr(this, `Invalid name: '${_newName}' is path-like`)
     const newPath = path.join(this.parent().isAt, _newName)
+    if (fs.existsSync(newPath))
+      throw new RoadErr(this, `New name: '${newPath}' already exists`)
     fs.renameSync(this.isAt, newPath)
     this.isAt = newPath
   }
 
 
-  abstract copy_self_into(_copyInto: Folder): Road
+  move_self_into(_moveInto: Folder): void {
+    // Default attempt to move
+    const destPath = path.join(_moveInto.isAt, this.name())
+    if (fs.existsSync(destPath))
+      throw new RoadErr(this, `Destination: '${destPath}' already exists`)
+    fs.renameSync(this.isAt, destPath)
+    this.isAt = destPath
+  }
 
 
-  abstract move_self_into(_moveInto: Folder): void
+  copy_self_into(_copyInto: Folder): this {
+    // Default attempt to copy
+    const destPath = path.join(_copyInto.isAt, this.name())
+    if (fs.existsSync(destPath))
+      throw new RoadErr(this, `Destination: '${destPath}' already exists`)
+    if (this.type() === RoadT.SYMLINK) {
+      const linkTarget = fs.readlinkSync(this.isAt)
+      fs.symlinkSync(linkTarget, destPath)
+    } else {
+      // Trying to use 'cp' for other special files (pipes, sockets, etc.)
+      const result = spawnSync("cp", ["-a", this.isAt, destPath])
+      if (result.status !== 0)
+        throw new RoadErr(this, `Failed to copy special file: ${result.stderr?.toString() || "unknown error"}`)
+    }
+    return this.cpy(destPath);
+  }
 }
 
 
@@ -297,42 +363,19 @@ export class BizarreRoad extends Road {
     the usual categories such as symbolic links
     or pipes.
   */
+  readonly originalType: RoadT // To remember own type
+
+
   constructor(_lookFor: string) {
     super(_lookFor)
-    if (this.self_type() === RoadStatus.FILE || this.self_type() === RoadStatus.FOLDER)
-      throw new AnyError(`"${_lookFor}" is a regular file or directory`)
+    this.originalType = this.type()
+    if (this.originalType === RoadT.FILE || this.originalType=== RoadT.FOLDER)
+      throw new RoadErr(this, `Type missmatch: ${this.originalType} is too normal (?), use File/Folder instead`)
   }
 
 
-  override cpy(): BizarreRoad { return new BizarreRoad(this.isAt) }
-
-
-  override copy_self_into(_copyInto: Folder): BizarreRoad {
-    /*
-      Attempt to copy the special file using system utilities
-    */
-    const destPath = path.join(_copyInto.isAt, this.name())
-    if (fs.existsSync(destPath))
-      throw new AnyError(`Copying to "${destPath}" would overwrite an existing entry`)
-    if (this.self_type() === RoadStatus.SYMLINK) {
-      const linkTarget = fs.readlinkSync(this.isAt)
-      fs.symlinkSync(linkTarget, destPath)
-    } else {
-      // Trying to use 'cp' for other special files (pipes, sockets, etc.)
-      const result = spawnSync("cp", ["-a", this.isAt, destPath])
-      if (result.status !== 0)
-        throw new AnyError(`Failed to copy special file: ${result.stderr?.toString() || "unknown error"}`)
-    }
-    return new BizarreRoad(destPath)
-  }
-
-
-  override move_self_into(_moveInto: Folder): void {
-    const destPath = path.join(_moveInto.isAt, this.name())
-    if (fs.existsSync(destPath))
-      throw new AnyError(`Moving to "${destPath}" would overwrite an existing entry`)
-    fs.renameSync(this.isAt, destPath)
-    this.isAt = destPath
+  override exists(): boolean {
+    return fs.existsSync(this.isAt) && this.type() === this.originalType
   }
 }
 
@@ -345,31 +388,18 @@ export class Folder extends Road {
   constructor(_lookFor: string, createIfNotExists: boolean = false) {
     if (createIfNotExists && !fs.existsSync(_lookFor))
       fs.mkdirSync(_lookFor, { recursive: true })
-    super(_lookFor, RoadStatus.FOLDER)
+    super(_lookFor)
+    if (this.type() !== RoadT.FOLDER)
+      throw new RoadErr(this, "Type missmatch: Should be folder")
   }
 
 
-  override cpy(): Folder { return new Folder(this.isAt) }
-
-
-  list(): Array<road_t> {
-    return fs.readdirSync(this.isAt).map(name => {
-      const fullPath = path.join(this.isAt, name)
-      switch (fs.lstatSync(fullPath).mode & fs.constants.S_IFMT) {
-        case fs.constants.S_IFDIR: return new Folder(fullPath)
-        case fs.constants.S_IFREG: return new File(fullPath)
-        case fs.constants.S_IFLNK: return new BizarreRoad(fullPath)
-        case fs.constants.S_IFBLK: return new BizarreRoad(fullPath)
-        case fs.constants.S_IFCHR: return new BizarreRoad(fullPath)
-        case fs.constants.S_IFIFO: return new BizarreRoad(fullPath)
-        case fs.constants.S_IFSOCK: return new BizarreRoad(fullPath)
-        default: throw new AnyError(`Unknown file type for path: ${fullPath}`)
-      }
-    })
+  list(): Array<Road> {
+    return fs.readdirSync(this.isAt).map(name => road_factory(path.join(this.isAt, name)))
   }
 
 
-  find(_lookFor: string): road_t | undefined {
+  find(_lookFor: string): Road | undefined {
     /*
       Check if the folder contains a file or folder with
       the given relative path. If it does, return the
@@ -377,47 +407,29 @@ export class Folder extends Road {
       Note:
         Path MUST be relative
     */
-    if (_lookFor.length == 0)
-      throw new AnyError(`Invalid path: ${_lookFor}`)
-    if (is_windows() && _lookFor.at(1) === ":" && _lookFor.at(2) === "\\") // Disk:\
-      throw new AnyError(`Path must be relative, got "${_lookFor}"`)
-    else if (is_unix() && _lookFor.startsWith("/"))
-      throw new AnyError(`Path must be relative, got "${_lookFor}"`)
+    if (_lookFor.length === 0)
+      throw new RoadErr(this, "Invalid path: Empty path given to lookup")
+    if (IS_WINDOWS && _lookFor.at(1) === ":" && _lookFor.at(2) === "\\") // X:\
+      throw new RoadErr(this, `Invalid path: Not relative: ${_lookFor}`)
+    else if (!IS_WINDOWS && _lookFor.startsWith("/"))
+      throw new RoadErr(this, `Invalid path: Not relative: ${_lookFor}`)
 
     if (!fs.existsSync(path.join(this.isAt, _lookFor)))
       return undefined
-
-    switch (fs.lstatSync(path.join(this.isAt, _lookFor)).mode & fs.constants.S_IFMT) {
-      case fs.constants.S_IFDIR: return new Folder(path.join(this.isAt, _lookFor))
-      case fs.constants.S_IFREG: return new File(path.join(this.isAt, _lookFor))
-      case fs.constants.S_IFLNK: return new BizarreRoad(path.join(this.isAt, _lookFor))
-      case fs.constants.S_IFBLK: return new BizarreRoad(path.join(this.isAt, _lookFor))
-      case fs.constants.S_IFCHR: return new BizarreRoad(path.join(this.isAt, _lookFor))
-      case fs.constants.S_IFIFO: return new BizarreRoad(path.join(this.isAt, _lookFor))
-      case fs.constants.S_IFSOCK: return new BizarreRoad(path.join(this.isAt, _lookFor))
-      default: throw new AnyError(`Unknown file type for path: ${_lookFor}`)
-    }
+    else
+      return road_factory(path.join(this.isAt, _lookFor))
   }
 
 
-  override copy_self_into(_copyInto: Folder): Folder {
-    // Recursive copy
+  override copy_self_into(_copyInto: Folder, _options: fs.CopySyncOptions = { recursive: true }): this {
     const newFolder = new Folder(path.join(_copyInto.isAt, this.name()))
-    if (fs.existsSync(newFolder.isAt))
-      throw new AnyError(`Copying to "${newFolder.isAt}" would overwrite an existing entry`)
-    this.list().forEach(item => {
-      item.copy_self_into(newFolder)
-    })
-    return newFolder
+    fs.cpSync(this.isAt, newFolder.isAt, _options) // Merges
+    return newFolder as this
   }
 
 
-  override move_self_into(_moveInto: Folder): void {
-    const newPath = path.join(_moveInto.isAt, this.name())
-    if (fs.existsSync(newPath))
-      throw new AnyError(`Moving to "${newPath}" would overwrite an existing entry`)
-    fs.renameSync(this.isAt, newPath)
-    this.isAt = newPath
+  override exists(): boolean {
+    return fs.existsSync(this.isAt) && this.type() === RoadT.FOLDER
   }
 }
 
@@ -430,42 +442,30 @@ export class File extends Road {
   constructor(_lookFor: string, createIfNotExists: boolean = false) {
     if (createIfNotExists && !fs.existsSync(_lookFor))
       fs.writeFileSync(_lookFor, "")
-    super(_lookFor, RoadStatus.FILE)
+    super(_lookFor)
+    if (this.type() !== RoadT.FILE)
+      throw new RoadErr(this, "Type missmatch: Should be file")
   }
 
 
-  override copy_self_into(_copyInto: Folder): File {
-    const newFile = new File(path.join(_copyInto.isAt, this.name()))
-    if (fs.existsSync(newFile.isAt))
-      throw new AnyError(`Copying to "${newFile.isAt}" would overwrite an existing entry`)
-    fs.copyFileSync(this.isAt, newFile.isAt)
-    return newFile
+  override exists(): boolean {
+    return fs.existsSync(this.isAt) && this.type() === RoadT.FILE
   }
-  override move_self_into(_moveInto: Folder): void {
-    const newPath = path.join(_moveInto.isAt, this.name())
-    if (fs.existsSync(newPath))
-      throw new AnyError(`Moving to "${newPath}" would overwrite an existing entry`)
-    fs.renameSync(this.isAt, newPath)
-    this.isAt = newPath
-  }
-
-
-  override cpy(): File { return new File(this.isAt) }
 
 
   read_text(): string {
     return fs.readFileSync(this.isAt, "utf-8")
   }
-  edit_text(newText: string): void {
-    fs.writeFileSync(this.isAt, newText)
+  edit_text(_newText: string): void {
+    fs.writeFileSync(this.isAt, _newText)
   }
 
 
   read_binary(): Buffer {
     return fs.readFileSync(this.isAt)
   }
-  edit_binary(newBuffer: Buffer | Uint8Array): void {
-    fs.writeFileSync(this.isAt, newBuffer)
+  edit_binary(_newBuffer: Buffer | Uint8Array): void {
+    fs.writeFileSync(this.isAt, _newBuffer)
   }
 
 
@@ -482,26 +482,53 @@ export class File extends Road {
 
 // If DOM exists
 export namespace DOM {
-  export function byId<T extends HTMLElement>(id: string, elementType: new() => T): T {
-    const element = document.getElementById(id)
+  export class DOMErr extends Error {
+    constructor(_identifier: string, _msg: string) {
+      super(`cslib.DOMErr from class or id '${_identifier}' because: ${_msg}`)
+      LAST_ERROR = this
+    }
+  }
+
+
+
+  export function by_id<T extends HTMLElement>(_id: string, _elementType: new() => T): T {
+    const element = document.getElementById(_id)
     if (!element)
-      throw new AnyError(`Element not found with id: ${id}`)
-    if (!(element instanceof elementType))
-      throw new AnyError(`Element #${id} is not of type ${elementType.name}`)
+      throw new DOMErr(_id, "Not found")
+    if (!(element instanceof _elementType))
+      throw new DOMErr(_id, `Type missmatch: Element is not of type ${_elementType.name}`)
     return element as T
   }
 
-  export function byClass<T extends HTMLElement>(className: string, elementType: new() => T): T[] {
-    const cleanClass = className.startsWith('.') ? className.slice(1) : className
+
+
+  export function by_class<T extends HTMLElement>(_className: string, _elementType: new() => T): T[] {
+    const cleanClass = _className.startsWith('.') ? _className.slice(1) : _className
     const elements = document.querySelectorAll(`.${cleanClass}`)
     const result: T[] = []
 
     elements.forEach((element, index) => {
-      if (!(element instanceof elementType))
-        throw new AnyError(`Element at index ${index} with class '${cleanClass}' is not of type ${elementType.name}`)
+      if (!(element instanceof _elementType))
+        throw new DOMErr(_className, `Type missmatch at index ${index}: Element is not of type ${_elementType.name}`)
       result.push(element as T)
     })
     
     return result
   }
+
+
+
+  // export function by_class_HTMLVidEl_Or_HTMLImgEl(arg0: string, arg1: number): (HTMLVideoElement | HTMLImageElement)[] {
+  //   const rawElements = document.getElementsByClassName(arg0)
+  //   const result: (HTMLVideoElement | HTMLImageElement)[] = []
+  //   for (let i = 0; i < rawElements.length; i++) {
+  //     const el = rawElements.item(i)
+  //     if (el instanceof HTMLVideoElement || el instanceof HTMLImageElement) {
+  //       result.push(el)
+  //     } else {
+  //       throw new DOMErr(arg0, `Type missmatch at index ${i}: Element is not of type HTMLVideoElement or HTMLImageElement`)
+  //     }
+  //   }
+  //   return result
+  // }
 }

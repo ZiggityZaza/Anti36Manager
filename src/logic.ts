@@ -2,26 +2,27 @@
   Contains the logic for managing media files
 */
 import * as os from "node:os"
+import * as path from "node:path"
 import * as cs from "./cslib.js"
 
 
-export const enum MediaType {
+export const enum MediaT {
   IMAGE = "IMAGE",
   VIDEO = "VIDEO"
 }
-export type tag_t = string // Key to represent 
+export type TagChar = string // Key to represent 
 
 
-export const DEFAULT_A36_CONFIG_PATH = `${os.homedir()}${cs.pathSep}Anti36Manager.json`
+export const DEFAULT_A36_CONFIG_PATH = path.join(os.homedir(), "Anti36Manager.json")
 export const A36M_CONFIGS: {
   galleryFolder: string // Path to gallery folder
   unsortedFolder: string // Path to unsorted folder
-  tagsLookup: Record<tag_t, string>
+  tagsLookup: Record<TagChar, string>
   [extra: string]: any
 } = JSON.parse(new cs.File(DEFAULT_A36_CONFIG_PATH).read_text())
 export const GALLERY_FOLDER = new cs.Folder(A36M_CONFIGS.galleryFolder)
 export const UNSORTED_FOLDER = new cs.Folder(A36M_CONFIGS.unsortedFolder)
-export const TAGS_LOOKUP: Record<tag_t, string> = A36M_CONFIGS.tagsLookup
+export const TAGS_LOOKUP: Record<TagChar, string> = A36M_CONFIGS.tagsLookup
 export const out: cs.Out = new cs.Out("[Anti36Manager]", cs.ANSII_ESCAPE.CYAN)
 
 
@@ -31,18 +32,18 @@ export function toggle_out(): void {
 
 
 // Lookups
-export const EXTENSION_TO_MEDIA: Record<string, MediaType> = {
-  ".mp4": MediaType.VIDEO,
-  ".webm": MediaType.VIDEO,
-  ".mkv": MediaType.VIDEO,
-  ".avi": MediaType.VIDEO,
-  ".mov": MediaType.VIDEO,
-  ".jpg": MediaType.IMAGE,
-  ".jpeg": MediaType.IMAGE,
-  ".png": MediaType.IMAGE,
-  ".gif": MediaType.IMAGE,
-  ".bmp": MediaType.IMAGE,
-  ".webp": MediaType.IMAGE
+export const EXTENSION_TO_MEDIA: Record<string, MediaT> = {
+  ".mp4": MediaT.VIDEO,
+  ".webm": MediaT.VIDEO,
+  ".mkv": MediaT.VIDEO,
+  ".avi": MediaT.VIDEO,
+  ".mov": MediaT.VIDEO,
+  ".jpg": MediaT.IMAGE,
+  ".jpeg": MediaT.IMAGE,
+  ".png": MediaT.IMAGE,
+  ".gif": MediaT.IMAGE,
+  ".bmp": MediaT.IMAGE,
+  ".webp": MediaT.IMAGE
 }
 
 
@@ -52,22 +53,66 @@ export let portrayalsByPersona: Map<Persona, Portrayal[]> = new Map(); // Owns p
 
 
 // Containers for easy access
-export let portrayalsByTag: Map<tag_t, Portrayal[]> = new Map();
-export let portrayalsByType: Map<MediaType, Portrayal[]> = new Map();
+export let portrayalsByTag: Map<TagChar, Portrayal[]> = new Map();
+export let portrayalsByType: Map<MediaT, Portrayal[]> = new Map();
 
 
+
+export class A36Err extends cs.AnyError {
+  constructor(_msg: string) {
+    super("logic.A36LogicErr: " + _msg)
+  }
+}
+
+
+
+export class MediaErr extends A36Err {
+  readonly self: Portrayal | Persona | Origin
+
+
+  constructor(_self: Portrayal | Persona | Origin, _msg: string) {
+    let fullMessage = "logic.MediaErr: ("
+    if (_self instanceof Portrayal)
+      fullMessage += `portrayal index=${_self.index} in persona='${_self.persona.name}' of origin='${_self.persona.origin.name}'`
+    else if (_self instanceof Persona)
+      fullMessage += `persona='${_self.name}' of origin='${_self.origin.name}'`
+    else if (_self instanceof Origin)
+      fullMessage += `origin='${_self.name}'`
+    super(fullMessage + ") because " + _msg)
+    this.self = _self
+  }
+}
 
 
 export class Origin {
   readonly name: string
+
 
   constructor(_name: string) {
     this.name = _name
     cs.add_key_to_map(personasByOrigin, this)
   }
 
+
   where(): cs.Folder {
-    return new cs.Folder(GALLERY_FOLDER.isAt + "/" + this.name)
+    return new cs.Folder(path.join(GALLERY_FOLDER.isAt, this.name))
+  }
+
+
+  find_persona(_byName: string): Persona | undefined {
+    if (!personasByOrigin.has(this) || personasByOrigin.get(this)!.length === 0)
+      throw new MediaErr(this, `No personas found for this origin`)
+    for (const persona of personasByOrigin.get(this)!)
+      if (persona.name === _byName)
+        return persona
+    return undefined
+  }
+
+
+  list_personas(): Persona[] {
+    if (!personasByOrigin.has(this))
+      throw new MediaErr(this, `No personas found for this origin`)
+    return Array.from(personasByOrigin.get(this)!)
   }
 }
 
@@ -76,14 +121,33 @@ export class Persona {
   readonly origin: Origin
   readonly name: string
 
+
   constructor(_origin: Origin, _name: string) {
     this.origin = _origin
     this.name = _name
     cs.add_val_to_map(personasByOrigin, this.origin, this)
+    cs.add_key_to_map(portrayalsByPersona, this)
   }
 
   where(): cs.Folder {
-    return new cs.Folder(GALLERY_FOLDER.isAt + "/" + this.origin.name + "/" + this.name)
+    return new cs.Folder(path.join(GALLERY_FOLDER.isAt, this.origin.name, this.name))
+  }
+
+
+  find_portrayal(_byIndex: number): Portrayal | undefined {
+    if (!portrayalsByPersona.has(this) || portrayalsByPersona.get(this)!.length === 0)
+      throw new MediaErr(this, `No portrayals found for this persona`)
+    for (const portrayal of portrayalsByPersona.get(this)!)
+      if (portrayal.index === _byIndex)
+        return portrayal
+    return undefined
+  }
+
+
+  list_portrayals(): Portrayal[] {
+    if (!portrayalsByPersona.has(this))
+      throw new MediaErr(this, `No portrayals found for this persona`)
+    return Array.from(portrayalsByPersona.get(this)!)
   }
 }
 
@@ -91,6 +155,8 @@ export class Persona {
 export class Portrayal {
   readonly index: number
   readonly persona: Persona
+
+
   constructor(_index: number, _persona: Persona) {
     /*
       Does extended initialization and validation
@@ -106,34 +172,34 @@ export class Portrayal {
       cs.add_val_to_map(portrayalsByTag, tag, this)
   }
 
+
   where(): cs.File {
-    // Find self in filesystem
-    const parent = new cs.Folder(GALLERY_FOLDER.isAt + "/" + this.persona.origin.name + "/" + this.persona.name)
-    let imAt: cs.File | undefined = undefined
-    for (const entry of parent.list())
+    for (const entry of this.persona.where().list())
       if (entry instanceof cs.File && cs.separate(entry.name(), '_').at(0) === cs.to_str(this.index))
-        if (!imAt)
-          imAt = entry
-        else
-          throw new cs.AnyError(`This portrayal (${imAt.isAt}) and ${entry.isAt} have the same index`)
-    return cs.or_err(imAt, `No file found for portrayal with index ${this.index} in persona ${this.persona.name}`)
+        return entry
+    throw new MediaErr(this, `Couldn't find self in persona folder`)
   }
 
-  type(): MediaType {
-    return cs.or_err(EXTENSION_TO_MEDIA[this.where().extension()], `Unsupported file extension '${this.where().extension()}' in portrayal ${this.where().isAt}`)
+
+  type(): MediaT {
+    if (!EXTENSION_TO_MEDIA[this.where().extension()])
+      throw new MediaErr(this, `Unsupported file extension '${this.where().extension()}'`)
+    return EXTENSION_TO_MEDIA[this.where().extension()]!
   }
 
-  tags(): tag_t[] {
+
+  tags(): TagChar[] {
     // Determine own tags
-    const tagsRaw = cs.separate(this.where().name(), '_').at(1) // Something like "12aB"
-    let existingTags: tag_t[] = []
+    const tagsRaw = cs.separate(this.where().name(), '_').at(1) // Something like "1a2B"
     if (tagsRaw === undefined)
-      throw new cs.AnyError(`No tags found for portrayal ${this.where().isAt}`)
+      throw new MediaErr(this, `Invalid filename format, no tags found`)
+
+    let existingTags: TagChar[] = []
     for (const char of tagsRaw) {
       if (!(char in TAGS_LOOKUP))
-        throw new cs.AnyError(`Invalid tag character '${char}' found for portrayal ${this.where().isAt}`)
+        throw new MediaErr(this, `Invalid tag character '${char}' found`)
       if (existingTags.includes(char))
-        throw new cs.AnyError(`Duplicate tag '${char}' found for portrayal ${this.where().isAt}`)
+        throw new MediaErr(this, `Duplicate tag '${char}' found`)
       existingTags.push(char)
     }
     return existingTags
@@ -142,22 +208,11 @@ export class Portrayal {
 
 
 
-export function find_origin(_byName: string): Origin {
+export function find_origin(_byName: string): Origin | undefined {
   for (const origin of personasByOrigin.keys())
     if (origin.name === _byName)
       return origin
-  throw new cs.AnyError(`Origin '${_byName}' not found`)
-}
-
-export function find_persona(_byName: string, _origin: Origin): Persona {
-  for (const persona of personasByOrigin.get(_origin)!)
-    if (persona.name === _byName)
-      return persona
-  throw new cs.AnyError(`Persona '${_byName}' not found in origin '${_origin.name}'`)
-}
-
-export function find_portrayal(_byIndex: number, _persona: Persona): Portrayal {
-  return cs.or_err(portrayalsByPersona.get(_persona)?.find(portrayal => portrayal.index === _byIndex), `Portrayal with index '${_byIndex}' not found in persona '${_persona.name}'`)
+  return undefined
 }
 
 
@@ -166,29 +221,15 @@ export function list_origins(): Origin[] {
   return Array.from(personasByOrigin.keys())
 }
 
-export function list_all_personas(_fromOrigin?: Origin): Persona[] {
-  if (_fromOrigin) {
-    return Array.from(personasByOrigin.get(_fromOrigin)!)
-  }
-  return Array.from(personasByOrigin.values()).flat()
-}
 
-export function list_all_portrayals(_fromPersona?: Persona): Portrayal[] {
-  if (_fromPersona) {
-    return Array.from(portrayalsByPersona.get(_fromPersona)!)
-  }
-  return Array.from(portrayalsByPersona.values()).flat()
-}
 
-export function list_all_unsorted_portrayals(_existing?: (cs.File | cs.Folder)[], _lookIn = UNSORTED_FOLDER): cs.File[] {
+export function list_all_unsorted_portrayals(_existing?: cs.File[], _lookIn = UNSORTED_FOLDER): cs.File[] {
   let result: cs.File[] = []
   for (const entry of _lookIn.list()) {
     if (entry instanceof cs.Folder)
       result = result.concat(list_all_unsorted_portrayals(_existing, entry))
     else if (entry instanceof cs.File)
       result.push(entry)
-    else
-      throw new cs.AnyError(`Unexpected entry found: '${entry.isAt}' (expected either portrayals or subfolders containing portrayals)`)
   }
   result.sort((a, b) => a.last_modified().getTime() - b.last_modified().getTime());
   return result;
@@ -203,7 +244,7 @@ export function tag_key_exists(_char: string): string | undefined {
   return Object.keys(TAGS_LOOKUP).find(key => key === _char)
 }
 
-export function tag_meaning_exists(_meaning: string): tag_t | undefined {
+export function tag_meaning_exists(_meaning: string): TagChar | undefined {
   /*
     Find `_meaning` as value in TAGS_LOOKUP
   */
@@ -212,42 +253,41 @@ export function tag_meaning_exists(_meaning: string): tag_t | undefined {
 
 
 
-export function create_portrayal(_persona: Persona, tags: string[], _fromUnsorted: cs.File): Portrayal {
+export function create_portrayal(_persona: Persona, _tagCharAsRow: string, _fromUnsorted: cs.File): Portrayal {
   const nextOpenIndex = portrayalsByPersona.get(_persona)?.length ?? 0
-  let tagsCharAsRow = ""
-  for (const tag of tags)
-    tagsCharAsRow += cs.or_err(tag_meaning_exists(tag), `Unknown tag '${tag}'`)
-  _fromUnsorted.move_self_into(new cs.Folder(`${_persona.where().isAt}/${nextOpenIndex}_${tagsCharAsRow}_${_fromUnsorted.extension()}`))
+  _fromUnsorted.rename_self_to(`A36M_TEMP_${Math.random().toString(36)}${_fromUnsorted.extension()}`) // Temporary random name to avoid conflicts
+  _fromUnsorted.move_self_into(new cs.Folder(_persona.where().isAt))
+  _fromUnsorted.rename_self_to(`${nextOpenIndex}_${_tagCharAsRow}${_fromUnsorted.extension()}`)
   return new Portrayal(nextOpenIndex, _persona)
 }
 
 
 
 // Initialize
-export function read_A36() {
+export function read_A36() { // TODO: More robust error handling
   out.suffix = "[read_A36]"
   out.print(`Reading content of '${GALLERY_FOLDER.isAt}'...`)
   const entries = GALLERY_FOLDER.list()
   for (const originLayer of entries) {
     if (!(originLayer instanceof cs.Folder))
-      throw new cs.AnyError(`Unexpected entry found: '${originLayer.isAt}' (expected first-layer origin folders)`)
+      throw new A36Err(`Unexpected entry found: '${originLayer.isAt}' (expected first-layer origin folders)`)
     out.print(`Found origin folder: ${originLayer.isAt}`)
     const origin = new Origin(originLayer.name())
     for (const personaLayer of originLayer.list()) {
       if (!(personaLayer instanceof cs.Folder))
-        throw new cs.AnyError(`Unexpected entry found: '${personaLayer.isAt}' (expected second-layer persona folders)`)
+        throw new A36Err(`Unexpected entry found: '${personaLayer.isAt}' (expected second-layer persona folders)`)
       out.print(`Found persona folder: ${personaLayer.isAt}`)
       const persona = new Persona(origin, personaLayer.name())
       let expectedIndex = 0
       for (const portrayalLayer of personaLayer.list()) {
         if (!(portrayalLayer instanceof cs.File))
-          throw new cs.AnyError(`Unexpected entry found: '${portrayalLayer.isAt}' (expected third/final-layer portrayal files)`)
+          throw new A36Err(`Unexpected entry found: '${portrayalLayer.isAt}' (expected third/final-layer portrayal files)`)
         out.print(`Found portrayal file: ${portrayalLayer.isAt}`)
         new Portrayal(expectedIndex++, persona)
       }
     }
   }
-  out.print(`Finished reading. Found ${list_origins().length} origins, ${list_all_personas().length} personas and ${list_all_portrayals().length} portrayals.`)
+  out.print(`Finished reading. Found ${list_origins().length} origins, ${Array.from(personasByOrigin.values()).reduce((acc, val) => acc + val.length, 0)} personas, and ${Array.from(portrayalsByPersona.values()).reduce((acc, val) => acc + val.length, 0)} portrayals.`)
 }
 
 
