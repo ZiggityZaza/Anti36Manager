@@ -4,9 +4,9 @@
     For consistency, don't use Web/DOM-related code here
 */
 import * as os from "node:os"
+import * as fs from "node:fs"
 import * as path from "node:path"
 import * as cs from "./cslib.js"
-
 
 export const enum MediaT {
   IMAGE = "IMAGE",
@@ -14,24 +14,19 @@ export const enum MediaT {
 }
 
 
-export const DEFAULT_A36_CONFIG_PATH = path.join(os.homedir(), "Anti36Manager.json")
-export const A36M_CONFIGS: {
-  galleryFolder: string // Path to gallery folder
-  unsortedFolder: string // Path to unsorted folder
-  [extra: string]: any
-} = JSON.parse(new cs.File(DEFAULT_A36_CONFIG_PATH).read_text())
+// export const DEFAULT_A36_CONFIG_PATH = path.join("E:", "Anti36Manager.json")
+// export const A36M_CONFIGS: {
+//   galleryFolder: string // Path to gallery folder
+//   unsortedFolder: string // Path to unsorted folder
+//   [extra: string]: any
+// } = JSON.parse(new cs.File(DEFAULT_A36_CONFIG_PATH).read_text())
+import A36M_CONFIGS from "E:/a36s.json" with { type: "json" }; // Placeholder
 export const GALLERY_FOLDER = new cs.Folder(A36M_CONFIGS.galleryFolder)
 export const UNSORTED_FOLDER = new cs.Folder(A36M_CONFIGS.unsortedFolder)
-export const out: cs.Out = new cs.Out("[Anti36Manager]", cs.ANSII_ESCAPE.CYAN)
-
-
-export function toggle_out(): void {
-  out.silence = !out.silence
-}
 
 
 // Lookups
-export const EXTENSION_TO_MEDIA = {
+export const EXTENSION_TO_MEDIA: { [ext: string]: MediaT } = {
   ".mp4": MediaT.VIDEO,
   ".webm": MediaT.VIDEO,
   ".mkv": MediaT.VIDEO,
@@ -44,24 +39,12 @@ export const EXTENSION_TO_MEDIA = {
   ".bmp": MediaT.IMAGE,
   ".webp": MediaT.IMAGE
 } as const
-export type ExtT = keyof typeof EXTENSION_TO_MEDIA
 export const TAGS_LOOKUP = {
   'A': "_A", /*...*/ 'Z': "_Z",
   'a': "_a", /*...*/ 'z': "_z",
-  '0': "_0", /*...*/ '9': "_9"
+  '0': "_0", /*...*/ '9': "_9",
 } as const
 export type TagT = keyof typeof TAGS_LOOKUP
-
-
-
-// Access
-export let personasByOrigin: Map<Origin, Persona[]> = new Map(); // Owns origins and personas
-export let portrayalsByPersona: Map<Persona, Portrayal[]> = new Map(); // Owns portrayals
-
-
-// Containers for easy access
-export let portrayalsByTag: Map<TagT, Portrayal[]> = new Map();
-export let portrayalsByType: Map<MediaT, Portrayal[]> = new Map();
 
 
 
@@ -91,35 +74,41 @@ export class MediaErr extends A36Err {
 }
 
 
+
+
+export function find_origin(_byName: string): Origin | undefined {
+  return new Origin(_byName)
+}
+
+
+
+export function list_origins(): Origin[] {
+  return GALLERY_FOLDER.list().map(folder => new Origin(folder.name()))
+}
+
+
 export class Origin {
   readonly name: string
 
-
   constructor(_name: string) {
+    /*
+      Integrate and return new origin into the Anti36
+      ecosystem
+    */
     this.name = _name
-    cs.add_key_to_map(personasByOrigin, this)
+    // personasByOrigin.set(this, personasByOrigin.get(this) || [])
   }
-
 
   where(): cs.Folder {
     return new cs.Folder(path.join(GALLERY_FOLDER.isAt, this.name))
   }
 
-
-  find_persona(_byName: string): Persona | undefined {
-    if (!personasByOrigin.has(this) || personasByOrigin.get(this)!.length === 0)
-      throw new MediaErr(this, `No personas found for this origin`)
-    for (const persona of personasByOrigin.get(this)!)
-      if (persona.name === _byName)
-        return persona
-    return undefined
+  list_personas(): Persona[] {
+    return this.where().list().map(folder => new Persona(this, folder.name()))
   }
 
-
-  list_personas(): Persona[] {
-    if (!personasByOrigin.has(this))
-      throw new MediaErr(this, `No personas found for this origin`)
-    return Array.from(personasByOrigin.get(this)!)
+  find_persona(_byName: string): Persona | undefined {
+    return this.list_personas().find(persona => persona.name === _byName)
   }
 }
 
@@ -128,33 +117,25 @@ export class Persona {
   readonly origin: Origin
   readonly name: string
 
-
   constructor(_origin: Origin, _name: string) {
+    /*
+      Integrate and return new persona into the Anti36
+      ecosystem
+    */
     this.origin = _origin
     this.name = _name
-    cs.add_val_to_map(personasByOrigin, this.origin, this)
-    cs.add_key_to_map(portrayalsByPersona, this)
   }
 
   where(): cs.Folder {
     return new cs.Folder(path.join(GALLERY_FOLDER.isAt, this.origin.name, this.name))
   }
 
-
-  find_portrayal(_byIndex: number): Portrayal | undefined {
-    if (!portrayalsByPersona.has(this) || portrayalsByPersona.get(this)!.length === 0)
-      throw new MediaErr(this, `No portrayals found for this persona`)
-    for (const portrayal of portrayalsByPersona.get(this)!)
-      if (portrayal.index === _byIndex)
-        return portrayal
-    return undefined
+  list_portrayals(): Portrayal[] {
+    return this.where().list().map((_, index) => new Portrayal(index, this));
   }
 
-
-  list_portrayals(): Portrayal[] {
-    if (!portrayalsByPersona.has(this))
-      throw new MediaErr(this, `No portrayals found for this persona`)
-    return Array.from(portrayalsByPersona.get(this)!)
+  find_portrayal(_byIndex: number): Portrayal | undefined {
+    return this.list_portrayals().find(portrayal => portrayal.index === _byIndex)
   }
 }
 
@@ -163,69 +144,25 @@ export class Portrayal {
   readonly index: number
   readonly persona: Persona
 
-
   constructor(_index: number, _persona: Persona) {
-    /*
-      Does extended initialization and validation
-      Naming conversion:
-        <index>_<tags>_.<extension>
-    */
-    this.index = _index // Zero-based
+    this.index = _index
     this.persona = _persona
-    // Register portrayal
-    cs.add_val_to_map(portrayalsByPersona, this.persona, this)
-    cs.add_val_to_map(portrayalsByType, this.type(), this)
-    for (const tag of this.tags())
-      cs.add_val_to_map(portrayalsByTag, tag, this)
   }
-
 
   where(): cs.File {
     for (const entry of this.persona.where().list())
-      if (entry instanceof cs.File && cs.separate(entry.name(), '_').at(0) === cs.to_str(this.index))
+      if (entry instanceof cs.File && entry.name().split('_')[0] === String(this.index))
         return entry
     throw new MediaErr(this, `Couldn't find self in persona folder`)
   }
 
-
   type(): MediaT {
-    if (!EXTENSION_TO_MEDIA[this.where().extension() as ExtT])
-      throw new MediaErr(this, `Unsupported file extension '${this.where().extension()}'`)
-    return EXTENSION_TO_MEDIA[this.where().extension() as ExtT]!
+    return EXTENSION_TO_MEDIA[this.where().extension()]!
   }
-
 
   tags(): TagT[] {
-    // Determine own tags
-    const tagsRaw = cs.separate(this.where().name(), '_').at(1) // Something like "1a2B"
-    if (tagsRaw === undefined)
-      throw new MediaErr(this, `Invalid filename format, no tags found`)
-
-    let existingTags: TagT[] = []
-    for (const char of tagsRaw) {
-      if (!(char in TAGS_LOOKUP))
-        throw new MediaErr(this, `Invalid tag character '${char}' found`)
-      if (existingTags.includes(char as TagT))
-        throw new MediaErr(this, `Duplicate tag '${char}' found`)
-      existingTags.push(char as TagT)
-    }
-    return existingTags
+    return this.where().name().split('_')[1]!.split('').map(tag => tag as TagT) // Something like "1a2B"
   }
-}
-
-
-
-export function find_origin(_byName: string): Origin | undefined {
-  for (const origin of personasByOrigin.keys())
-    if (origin.name === _byName)
-      return origin
-  return undefined
-}
-
-
-
-export function list_origins(): Origin[] {
-  return Array.from(personasByOrigin.keys())
 }
 
 
@@ -245,67 +182,19 @@ export function list_all_unsorted_portrayals(_existing?: cs.File[], _lookIn = UN
 
 
 export function tag_key_exists(_char: string): string | undefined {
-  /*
-    Find `_char` as key in TAGS_LOOKUP
-  */
   return Object.keys(TAGS_LOOKUP).find(key => key === _char)
 }
 
 export function tag_meaning_exists(_meaning: string): TagT | undefined {
-  /*
-    Find `_meaning` as value in TAGS_LOOKUP
-  */
   return Object.entries(TAGS_LOOKUP).find(([_, value]) => value === _meaning)?.[0] as TagT | undefined
 }
 
 
 
-export function create_portrayal(_persona: Persona, _tagCharAsRow: string, _fromUnsorted: cs.File): Portrayal {
-  const nextOpenIndex = portrayalsByPersona.get(_persona)?.length ?? 0
+export function create_portrayal(_persona: Persona, _tags: TagT[], _fromUnsorted: cs.File): Portrayal {
+  const nextOpenIndex = _persona.list_portrayals().length
   _fromUnsorted.rename_self_to(`A36M_TEMP_${Math.random().toString(36)}${_fromUnsorted.extension()}`) // Temporary random name to avoid conflicts
   _fromUnsorted.move_self_into(new cs.Folder(_persona.where().isAt))
-  _fromUnsorted.rename_self_to(`${nextOpenIndex}_${_tagCharAsRow}${_fromUnsorted.extension()}`)
+  _fromUnsorted.rename_self_to(`${nextOpenIndex}_${_tags.join("")}${_fromUnsorted.extension()}`)
   return new Portrayal(nextOpenIndex, _persona)
-}
-
-
-
-// Initialize
-export function read_A36() { // TODO: More robust error handling
-  out.suffix = "[read_A36]"
-  out.print(`Reading content of '${GALLERY_FOLDER.isAt}'...`)
-  const entries = GALLERY_FOLDER.list()
-  for (const originLayer of entries) {
-    if (!(originLayer instanceof cs.Folder))
-      throw new A36Err(`Unexpected entry found: '${originLayer.isAt}' (expected first-layer origin folders)`)
-    out.print(`Found origin folder: ${originLayer.isAt}`)
-    const origin = new Origin(originLayer.name())
-    for (const personaLayer of originLayer.list()) {
-      if (!(personaLayer instanceof cs.Folder))
-        throw new A36Err(`Unexpected entry found: '${personaLayer.isAt}' (expected second-layer persona folders)`)
-      out.print(`Found persona folder: ${personaLayer.isAt}`)
-      const persona = new Persona(origin, personaLayer.name())
-      let expectedIndex = 0
-      for (const portrayalLayer of personaLayer.list()) {
-        if (!(portrayalLayer instanceof cs.File))
-          throw new A36Err(`Unexpected entry found: '${portrayalLayer.isAt}' (expected third/final-layer portrayal files)`)
-        out.print(`Found portrayal file: ${portrayalLayer.isAt}`)
-        new Portrayal(expectedIndex++, persona)
-      }
-    }
-  }
-  out.print(`Finished reading. Found ${list_origins().length} origins, ${Array.from(personasByOrigin.values()).reduce((acc, val) => acc + val.length, 0)} personas, and ${Array.from(portrayalsByPersona.values()).reduce((acc, val) => acc + val.length, 0)} portrayals.`)
-}
-
-
-
-
-
-export function lets_go() {
-  console.log("Thank you so much for using the infamous and powerful Anti36Manager!")
-  console.log("This software is still in early development, so please report any issues you find.")
-  console.log("You can find the project at https://github.com/ZiggityZaza/Anti36Manager")
-  console.log("Have fun! <3")
-  console.log("Initializing...")
-  read_A36()
 }

@@ -1,7 +1,7 @@
 <head>
   <title>Anti36Manager</title>
-  <script defer src="../dist/main.js"></script>
   <link rel="stylesheet" href="brazy.css">
+  <!-- <script src="../dist/main.js"></script> -->
 </head>
 
 
@@ -10,14 +10,13 @@
   <main> <!-- Workspace -->
     <p id="panel-title">Preference Panel (aka. PP)</p>
     <section id="tags-map">
-      <button type="button" class="tag-button"> ... </button>
-      <!-- <button type="button" class="tag"> ... </button> -->
+      <button name="_" type="button" class="tag-button"> ... </button>
     </section>
 
     <form>
       <section id="buttons-panel">
-        <button type="submit" id="confirm" onclick="console.log('Confirmed')">Confirm</button>
-        <button type="button" id="switch-mode" onclick="console.log('Switching')">Switch to sorting/filtering</button>
+        <button type="button" id="confirm">Confirm</button>
+        <button type="button" id="switch-mode">Switch to sorting/filtering</button>
       </section>
 
       <section id="inputs-panel">
@@ -47,4 +46,6 @@
     <img class="preview" src="https://developers.elementor.com/docs/assets/img/elementor-placeholder-image.png" alt="Portrayal 1">
     <!-- Images and such -->
   </aside>
+
+  <script>require('../dist/main.js');</script>
 </body>

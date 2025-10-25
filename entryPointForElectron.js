@@ -10,7 +10,7 @@ const createWindow = () => {
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
-      preload: path.join(path.dirname(thisFilename), './dist/main.js'), // Compiled at src/
+      // preload: path.join(path.dirname(thisFilename), './dist/main.js'), // Compiled at src/
     },
   })
   mainWindow.loadFile(path.join(path.dirname(thisFilename), './src/main.html'))

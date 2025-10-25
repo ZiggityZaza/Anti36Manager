@@ -5,6 +5,7 @@ import * as fs from "node:fs"
 import * as path from "node:path"
 import * as os from "node:os"
 import { spawnSync } from "node:child_process"
+import { arrayBuffer } from "node:stream/consumers"
 
 
 
@@ -16,9 +17,6 @@ export let LAST_ERROR: Error | null = null // Only works for throws with this li
 // Vanilla functions (regardless of Node or Web)
 export function find_self_in_arr<T>(_array: Array<T>, _lookFor: T): T | undefined {
   return _array.find(item => item === _lookFor)
-}
-export function find_key_in_map<K, V>(_map: Map<K, V[]>, _key: K): V[] | undefined {
-  return _map.has(_key) ? _map.get(_key) : undefined
 }
 export function find_val_in_map<K, V>(_map: Map<K, V[]>, _value: V): K | undefined {
   for (const [key, values] of _map.entries())
@@ -53,19 +51,6 @@ export abstract class AnyError extends Error {
 
 
 
-export function add_val_to_map<K, V>(_map: Map<K, V[]>, _key: K, _value: V): void {
-  if (_map.has(_key))
-    _map.get(_key)!.push(_value)
-  else
-    _map.set(_key, [_value])
-}
-export function add_key_to_map<K, V>(_map: Map<K, V[]>, _key: K): void {
-  if (!_map.has(_key))
-    _map.set(_key, [])
-}
-
-
-
 export function range(_from: number, _to?: number, _step: number = 1): Array<number> {
   if (_to === undefined)
     [_from, _to] = [0, _from] // If only one way
@@ -81,13 +66,7 @@ export function range(_from: number, _to?: number, _step: number = 1): Array<num
 
 
 
-export function sort_arr<T>(_array: Array<T>, _compareFn: (a: T, b: T) => number): Array<T> {
-  return _array.slice().sort(_compareFn)
-}
-
-
-
-export function or_err<T>(_x: T | undefined | null, _msg: string, ErrCtor: new (msg: string) => Error = Error): T {
+export function or_err<T>(_x: T | undefined | null, ErrCtor: new (msg: string) => Error = Error, _msg: string = "assert failed"): T {
   if (_x === undefined || _x === null)
     throw new ErrCtor(_msg)
   return _x
@@ -118,23 +97,6 @@ export function time_to_str() {
 
 export async function sleep(_ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, _ms));
-}
-
-
-
-export function separate(_str: string, _sep: string): string[] {
-  const result: string[] = []
-  let current = ""
-  for (const c of _str) {
-    if (c === _sep) {
-      result.push(current)
-      current = ""
-    } else {
-      current += c
-    }
-  }
-  result.push(current)
-  return result
 }
 
 
@@ -174,6 +136,43 @@ export class Out {
 
 export function read_json_as<Interface>(_jsonContentAsStr: string): Interface {
   return JSON.parse(_jsonContentAsStr) as Interface
+}
+
+
+
+export function remove_all_from_arr<T>(_arr: Array<T>, _lookFor: T): void {
+  let i = 0
+  while (i < _arr.length)
+    if (_arr[i] === _lookFor)
+      _arr.splice(i, 1)
+    else
+      i++
+}
+
+
+
+export function inline_try<T>(_func: (...args: unknown[]) => T, ..._args: unknown[]): T | null {
+  try { return _func(..._args) }
+  catch (e) { return null }
+}
+
+
+
+export function entries<T extends Record<string, any>>(_obj: T): [keyof T, T[keyof T]][] {
+  return Object.entries(_obj) as [keyof T, T[keyof T]][]
+}
+
+
+
+export function rm_fileprotocol_from_src(_rawPath: string): string {
+  return _rawPath.replace(/^file:\/\/\//, "");
+}
+
+
+
+export function ass(_conditionResult: boolean): void {
+  if (!_conditionResult)
+    throw new Error("Assertion failed")
 }
 
 
@@ -484,32 +483,44 @@ export class File extends Road {
 export namespace DOM {
   export class DOMErr extends Error {
     constructor(_identifier: string, _msg: string) {
-      super(`cslib.DOMErr from type, class or id '${_identifier}' because: ${_msg}`)
+      super(`cslib.DOMErr at state '${document.readyState}' from type, class or id '${_identifier}' because: ${_msg}`)
       LAST_ERROR = this
     }
   }
 
 
 
-  export function by_id<T extends HTMLElement>(_id: string, _elementType: new() => T): T {
+  export function ready(): Promise<void> {
+    return new Promise((resolve) => {
+      if (document.readyState === 'loading')
+        document.addEventListener('DOMContentLoaded', () => resolve())
+      else
+        resolve()
+    })
+  }
+
+
+
+
+  export function by_id<T extends HTMLElement>(_id: string, _elementType?: new () => T): T {
     const element = document.getElementById(_id)
-    if (!element)
-      throw new DOMErr(_id, "Not found")
-    if (!(element instanceof _elementType))
-      throw new DOMErr(_id, `Type missmatch: Element is not of type ${_elementType.name}`)
+    const typeCtor = _elementType ?? HTMLElement
+    if (!(element instanceof typeCtor))
+      throw new DOMErr(_id, `Type missmatch: Element is not of type ${typeCtor.name} but ${element?.constructor.name}`)
     return element as T
   }
 
 
 
-  export function by_class<T extends HTMLElement>(_className: string, _elementType: new() => T): T[] {
+  export function by_class<T extends HTMLElement>(_className: string, _elementType?: new() => T): T[] {
+    const typeCtor = _elementType ?? HTMLElement
     const cleanClass = _className.startsWith('.') ? _className.slice(1) : _className
     const elements = document.querySelectorAll(`.${cleanClass}`)
     const result: T[] = []
 
     elements.forEach((element, index) => {
-      if (!(element instanceof _elementType))
-        throw new DOMErr(_className, `Type missmatch at index ${index}: Element is not of type ${_elementType.name}`)
+      if (!(element instanceof typeCtor))
+        throw new DOMErr(_className, `Type missmatch at index ${index}: Element is not of type ${typeCtor.name}`)
       result.push(element as T)
     })
     
@@ -519,5 +530,15 @@ export namespace DOM {
 
   export function by_tag<K extends keyof HTMLElementTagNameMap>(_tagName: K): HTMLElementTagNameMap[K][] {
     return Array.from(document.getElementsByTagName(_tagName))
+  }
+
+
+
+  export function id_exists<T extends HTMLElement>(_id: string, _elementType?: new() => T): boolean {
+    const typeCtor = _elementType ?? HTMLElement
+    const maybeElement = document.getElementById(_id)
+    if (!maybeElement || !(maybeElement instanceof typeCtor))
+      return false
+    return true
   }
 }
