@@ -66,7 +66,7 @@ export function range(_from: number, _to?: number, _step: number = 1): Array<num
 
 
 
-export function or_err<T>(_x: T | undefined | null, ErrCtor: new (msg: string) => Error = Error, _msg: string = "assert failed"): T {
+export function or_err<T>(_x: T | undefined | null, ErrCtor: new (msg: string) => Error = Error, _msg: string = "or_err undefined return"): T {
   if (_x === undefined || _x === null)
     throw new ErrCtor(_msg)
   return _x
@@ -134,12 +134,6 @@ export class Out {
 
 
 
-export function read_json_as<Interface>(_jsonContentAsStr: string): Interface {
-  return JSON.parse(_jsonContentAsStr) as Interface
-}
-
-
-
 export function remove_all_from_arr<T>(_arr: Array<T>, _lookFor: T): void {
   let i = 0
   while (i < _arr.length)
@@ -151,7 +145,7 @@ export function remove_all_from_arr<T>(_arr: Array<T>, _lookFor: T): void {
 
 
 
-export function inline_try<T>(_func: (...args: unknown[]) => T, ..._args: unknown[]): T | null {
+export function inline_try<T>(_func: Function, ..._args: unknown[]): T | null {
   try { return _func(..._args) }
   catch (e) { return null }
 }
@@ -170,11 +164,10 @@ export function rm_fileprotocol_from_src(_rawPath: string): string {
 
 
 
-export function ass(_conditionResult: boolean): void {
+export function ass(_conditionResult: boolean): void { // ass-ert
   if (!_conditionResult)
     throw new Error("Assertion failed")
 }
-
 
 
 
@@ -219,14 +212,14 @@ export class RoadErr extends Error {
   }
 }
 
-export function road_factory(_lookFor: string): Road {
-  const entryType = to_RoadT(_lookFor)
+export function road_factory(..._lookFor: string[]): Road {
+  const entryType = to_RoadT(path.join(..._lookFor))
   if (entryType === RoadT.FOLDER)
-    return new Folder(_lookFor)
+    return new Folder(false, ..._lookFor)
   else if (entryType === RoadT.FILE)
-    return new File(_lookFor)
+    return new File(false, ..._lookFor)
   else
-    return new BizarreRoad(_lookFor)
+    return new BizarreRoad(..._lookFor)
 }
 
 
@@ -246,14 +239,14 @@ export abstract class Road {
   isAt: string
 
 
-  constructor(_lookFor: string) {
+  constructor(..._pathAsJoinableOrByItself: string[]) {
     /*
       Find and resolve the absolute path of _lookFor
       with optional check to _shouldBeOfType
     */
-    if (!fs.existsSync(_lookFor))
+    if (!fs.existsSync(path.join(..._pathAsJoinableOrByItself)))
       throw new RoadErr(this, "Not found")
-    this.isAt = path.resolve(_lookFor)
+    this.isAt = path.resolve(path.join(..._pathAsJoinableOrByItself))
   }
 
 
@@ -288,30 +281,24 @@ export abstract class Road {
   }
 
 
-  cpy(_prevPath = this.isAt): this {
+  cpy(_prevPath = this.isAt): this { // Maybe outdated
     return new (this.constructor as any)(_prevPath) as this
   }
 
 
   parent(): Folder {
-    return new Folder(path.dirname(this.isAt))
+    return new Folder(false, path.dirname(this.isAt))
   }
 
 
-  layer(_index: number): Folder {
-    /*
-      Find parent paths by layer
-      Example:
-        const f = new Folder("/root/projects/folder")
-        const root: Folder = f.layer(0)
-        const parent: Folder = f.layer(f.depth() - 1) // 3 - 1
-    */
-    let parent: Folder = new Folder("./") // Dummy initialization
-    if (_index >= this.depth() || _index < 0)
-      throw new RoadErr(this, `Invalid index: Tried ${_index}, but max is ${this.depth() - 1}`)
-    for (let _ of range(this.depth() - _index))
-      parent = parent.parent()
-    return parent
+  parents(): Folder[] {
+    const result: Folder[] = []
+    let currentParent: Folder = this.parent()
+    while (currentParent.depth() > 1) {
+      result.unshift(currentParent)
+      currentParent = currentParent.parent()
+    }
+    return result
   }
 
 
@@ -365,8 +352,8 @@ export class BizarreRoad extends Road {
   readonly originalType: RoadT // To remember own type
 
 
-  constructor(_lookFor: string) {
-    super(_lookFor)
+  constructor(..._lookFor: string[]) {
+    super(..._lookFor)
     this.originalType = this.type()
     if (this.originalType === RoadT.FILE || this.originalType=== RoadT.FOLDER)
       throw new RoadErr(this, `Type missmatch: ${this.originalType} is too normal (?), use File/Folder instead`)
@@ -384,11 +371,11 @@ export class Folder extends Road {
   /*
     Handles folders in the file system
   */
-  constructor(_lookFor: string, createIfNotExists: boolean = false) {
-    if (createIfNotExists && !fs.existsSync(_lookFor))
-      fs.mkdirSync(_lookFor, { recursive: true })
-    super(_lookFor)
-    if (this.type() !== RoadT.FOLDER)
+  constructor(_createIfNotExists: boolean, ..._lookFor: string[]) {
+    if (_createIfNotExists && !fs.existsSync(path.join(..._lookFor)))
+      fs.mkdirSync(path.join(..._lookFor), { recursive: true })
+    super(..._lookFor)
+    if (!fs.existsSync(path.join(..._lookFor)) || this.type() !== RoadT.FOLDER)
       throw new RoadErr(this, "Type missmatch: Should be folder")
   }
 
@@ -408,10 +395,8 @@ export class Folder extends Road {
     */
     if (_lookFor.length === 0)
       throw new RoadErr(this, "Invalid path: Empty path given to lookup")
-    if (IS_WINDOWS && _lookFor.at(1) === ":" && _lookFor.at(2) === "\\") // X:\
-      throw new RoadErr(this, `Invalid path: Not relative: ${_lookFor}`)
-    else if (!IS_WINDOWS && _lookFor.startsWith("/"))
-      throw new RoadErr(this, `Invalid path: Not relative: ${_lookFor}`)
+    if (_lookFor.includes("/") || _lookFor.includes("\\"))
+      throw new RoadErr(this, `Invalid path: Not relative or is nested: ${_lookFor}`)
 
     if (!fs.existsSync(path.join(this.isAt, _lookFor)))
       return undefined
@@ -421,7 +406,7 @@ export class Folder extends Road {
 
 
   override copy_self_into(_copyInto: Folder, _options: fs.CopySyncOptions = { recursive: true }): this {
-    const newFolder = new Folder(path.join(_copyInto.isAt, this.name()))
+    const newFolder = new Folder(false, path.join(_copyInto.isAt, this.name()))
     fs.cpSync(this.isAt, newFolder.isAt, _options) // Merges
     return newFolder as this
   }
@@ -438,11 +423,11 @@ export class File extends Road {
   /*
     Handles files in the file system
   */
-  constructor(_lookFor: string, createIfNotExists: boolean = false) {
-    if (createIfNotExists && !fs.existsSync(_lookFor))
-      fs.writeFileSync(_lookFor, "")
-    super(_lookFor)
-    if (this.type() !== RoadT.FILE)
+  constructor(_createIfNotExists: boolean, ..._lookFor: string[]) {
+    if (_createIfNotExists && !fs.existsSync(path.join(..._lookFor)))
+      fs.writeFileSync(path.join(..._lookFor), "")
+    super(path.join(..._lookFor))
+    if (!fs.existsSync(path.join(..._lookFor)) || this.type() !== RoadT.FILE)
       throw new RoadErr(this, "Type missmatch: Should be file")
   }
 

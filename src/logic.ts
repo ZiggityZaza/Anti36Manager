@@ -14,15 +14,9 @@ export const enum MediaT {
 }
 
 
-// export const DEFAULT_A36_CONFIG_PATH = path.join("E:", "Anti36Manager.json")
-// export const A36M_CONFIGS: {
-//   galleryFolder: string // Path to gallery folder
-//   unsortedFolder: string // Path to unsorted folder
-//   [extra: string]: any
-// } = JSON.parse(new cs.File(DEFAULT_A36_CONFIG_PATH).read_text())
 import A36M_CONFIGS from "E:/a36s.json" with { type: "json" }; // Placeholder
-export const GALLERY_FOLDER = new cs.Folder(A36M_CONFIGS.galleryFolder)
-export const UNSORTED_FOLDER = new cs.Folder(A36M_CONFIGS.unsortedFolder)
+export const GALLERY_FOLDER = new cs.Folder(false, A36M_CONFIGS.galleryFolder)
+export const UNSORTED_FOLDER = new cs.Folder(false, A36M_CONFIGS.unsortedFolder)
 
 
 // Lookups
@@ -100,7 +94,7 @@ export class Origin {
   }
 
   where(): cs.Folder {
-    return new cs.Folder(path.join(GALLERY_FOLDER.isAt, this.name))
+    return new cs.Folder(false, GALLERY_FOLDER.isAt, this.name)
   }
 
   list_personas(): Persona[] {
@@ -127,7 +121,7 @@ export class Persona {
   }
 
   where(): cs.Folder {
-    return new cs.Folder(path.join(GALLERY_FOLDER.isAt, this.origin.name, this.name))
+    return new cs.Folder(false, GALLERY_FOLDER.isAt, this.origin.name, this.name)
   }
 
   list_portrayals(): Portrayal[] {
@@ -194,7 +188,7 @@ export function tag_meaning_exists(_meaning: string): TagT | undefined {
 export function create_portrayal(_persona: Persona, _tags: TagT[], _fromUnsorted: cs.File): Portrayal {
   const nextOpenIndex = _persona.list_portrayals().length
   _fromUnsorted.rename_self_to(`A36M_TEMP_${Math.random().toString(36)}${_fromUnsorted.extension()}`) // Temporary random name to avoid conflicts
-  _fromUnsorted.move_self_into(new cs.Folder(_persona.where().isAt))
-  _fromUnsorted.rename_self_to(`${nextOpenIndex}_${_tags.join("")}${_fromUnsorted.extension()}`)
+  _fromUnsorted.move_self_into(_persona.where())
+  _fromUnsorted.rename_self_to(`${nextOpenIndex}_${_tags.join("")}_${_fromUnsorted.extension()}`)
   return new Portrayal(nextOpenIndex, _persona)
 }
