@@ -3,20 +3,18 @@
   Note:
     For consistency, don't use Web/DOM-related code here
 */
-import * as os from "node:os"
-import * as fs from "node:fs"
-import * as path from "node:path"
-import * as cs from "./cslib.js"
+import * as ins from "ts-instrumentality"
 
 export const enum MediaT {
   IMAGE = "IMAGE",
   VIDEO = "VIDEO"
 }
+export class A36Err extends ins.AnyErr {}
 
 
-import A36M_CONFIGS from "E:/a36s.json" with { type: "json" }; // Placeholder
-export const GALLERY_FOLDER = new cs.Folder(false, A36M_CONFIGS.galleryFolder)
-export const UNSORTED_FOLDER = new cs.Folder(false, A36M_CONFIGS.unsortedFolder)
+import A36M_CONFIGS from "E:/a36s.json" with { type: "json" } // Placeholder
+export const GALLERY_FOLDER = new ins.Folder(false, A36M_CONFIGS.galleryFolder)
+export const UNSORTED_FOLDER = new ins.Folder(false, A36M_CONFIGS.unsortedFolder)
 
 
 // Lookups
@@ -42,20 +40,11 @@ export type TagT = keyof typeof TAGS_LOOKUP
 
 
 
-export class A36Err extends cs.AnyError {
-  constructor(_msg: string) {
-    super("logic.A36LogicErr: " + _msg)
-  }
-}
-
-
-
 export class MediaErr extends A36Err {
   readonly self: Portrayal | Persona | Origin
 
-
   constructor(_self: Portrayal | Persona | Origin, _msg: string) {
-    let fullMessage = "logic.MediaErr: ("
+    let fullMessage = "("
     if (_self instanceof Portrayal)
       fullMessage += `portrayal index=${_self.index} in persona='${_self.persona.name}' of origin='${_self.persona.origin.name}'`
     else if (_self instanceof Persona)
@@ -93,8 +82,8 @@ export class Origin {
     // personasByOrigin.set(this, personasByOrigin.get(this) || [])
   }
 
-  where(): cs.Folder {
-    return new cs.Folder(false, GALLERY_FOLDER.isAt, this.name)
+  where(): ins.Folder {
+    return new ins.Folder(false, GALLERY_FOLDER.isAt, this.name)
   }
 
   list_personas(): Persona[] {
@@ -120,8 +109,8 @@ export class Persona {
     this.name = _name
   }
 
-  where(): cs.Folder {
-    return new cs.Folder(false, GALLERY_FOLDER.isAt, this.origin.name, this.name)
+  where(): ins.Folder {
+    return new ins.Folder(false, GALLERY_FOLDER.isAt, this.origin.name, this.name)
   }
 
   list_portrayals(): Portrayal[] {
@@ -143,15 +132,15 @@ export class Portrayal {
     this.persona = _persona
   }
 
-  where(): cs.File {
+  where(): ins.File {
     for (const entry of this.persona.where().list())
-      if (entry instanceof cs.File && entry.name().split('_')[0] === String(this.index))
+      if (entry instanceof ins.File && entry.name().split('_')[0] === String(this.index))
         return entry
     throw new MediaErr(this, `Couldn't find self in persona folder`)
   }
 
   type(): MediaT {
-    return EXTENSION_TO_MEDIA[this.where().extension()]!
+    return EXTENSION_TO_MEDIA[this.where().ext()]!
   }
 
   tags(): TagT[] {
@@ -161,12 +150,12 @@ export class Portrayal {
 
 
 
-export function list_all_unsorted_portrayals(_existing?: cs.File[], _lookIn = UNSORTED_FOLDER): cs.File[] {
-  let result: cs.File[] = []
+export function list_all_unsorted_portrayals(_existing?: ins.File[], _lookIn = UNSORTED_FOLDER): ins.File[] {
+  let result: ins.File[] = []
   for (const entry of _lookIn.list()) {
-    if (entry instanceof cs.Folder)
+    if (entry instanceof ins.Folder)
       result = result.concat(list_all_unsorted_portrayals(_existing, entry))
-    else if (entry instanceof cs.File)
+    else if (entry instanceof ins.File)
       result.push(entry)
   }
   result.sort((a, b) => a.last_modified().getTime() - b.last_modified().getTime());
@@ -185,10 +174,10 @@ export function tag_meaning_exists(_meaning: string): TagT | undefined {
 
 
 
-export function create_portrayal(_persona: Persona, _tags: TagT[], _fromUnsorted: cs.File): Portrayal {
+export function create_portrayal(_persona: Persona, _tags: TagT[], _fromUnsorted: ins.File): Portrayal {
   const nextOpenIndex = _persona.list_portrayals().length
-  _fromUnsorted.rename_self_to(`A36M_TEMP_${Math.random().toString(36)}${_fromUnsorted.extension()}`) // Temporary random name to avoid conflicts
+  _fromUnsorted.rename_self_to(`A36M_TEMP_${Math.random().toString(36)}${_fromUnsorted.ext()}`) // Temporary random name to avoid conflicts
   _fromUnsorted.move_self_into(_persona.where())
-  _fromUnsorted.rename_self_to(`${nextOpenIndex}_${_tags.join("")}_${_fromUnsorted.extension()}`)
+  _fromUnsorted.rename_self_to(`${nextOpenIndex}_${_tags.join("")}_${_fromUnsorted.ext()}`)
   return new Portrayal(nextOpenIndex, _persona)
 }

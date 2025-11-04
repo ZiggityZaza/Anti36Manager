@@ -1,8 +1,9 @@
 {
   "name": "anti36manager",
-  "productName": "Loading A36M",
+  "author": "ZiggityZaza",
+  "description": "this is the description",
+  "productName": "A36M",
   "version": "1.0.0",
-  "description": "My Electron application description",
   "main": "./entryPointForElectron.js",
   "type": "module",
   "scripts": {
@@ -10,14 +11,12 @@
     "package": "electron-forge package",
     "make": "electron-forge make",
     "publish": "electron-forge publish",
-    "lint": "echo \"No linting configured\""
+    "bundle_to_js": "npx esbuild ./src/main.ts --bundle --platform=node --format=esm --outfile=./dist/main.js",
+    "dev": "npm run bundle_to_js && npm start"
   },
   "keywords": [],
   "dependencies": {
-    "electron-log": "^5.4.3",
-    "electron-squirrel-startup": "^1.0.1",
-    "react": "^19.1.1",
-    "react-dom": "^19.1.1"
+    "electron-squirrel-startup": "^1.0.1"
   },
   "devDependencies": {
     "@electron-forge/cli": "^7.8.3",
@@ -29,9 +28,8 @@
     "@electron-forge/plugin-fuses": "^7.8.3",
     "@electron/fuses": "^1.8.0",
     "@types/node": "^24.3.0",
-    "@types/react": "^19.1.11",
-    "@types/react-dom": "^19.1.7",
     "electron": "37.3.1",
+    "ts-instrumentality": "github:ZiggityZaza/ts-instrumentality",
     "typescript": "^5.9.3"
   }
 }

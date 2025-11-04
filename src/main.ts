@@ -1,18 +1,12 @@
-﻿import * as os from "node:os"
-// import React from "react" // React on idle
-// import * as ReactDOM from "react-dom/client" // React on idle
-import * as cs from "./cslib.js"
+﻿const timeStart = performance.now()
+import * as ins from "ts-instrumentality"
 import * as bn from "./logic.js"
-import * as ph from "node:path"
-// import type { HTMLElementType } from "react"
-
 
 
 
 // Resources
-const timeStart = performance.now()
 let isSortingMode = true
-let selectedPersonaFilters: bn.Persona[] = [] // Origins and personas to filter by
+let selectedPersonaFilters: bn.Persona[] = []
 let selectedTags: bn.TagT[] = []
 
 
@@ -24,22 +18,22 @@ const UI = {
     functions to manipulate them.
   */
   // Other
-  switchModeButton: cs.DOM.by_id("switch-mode", HTMLButtonElement), // Onclick event is set outside
+  switchModeButton: ins.DOM.by_id("switch-mode", HTMLButtonElement), // Onclick event is set outside
 
 
   // Previews (sidebar)
-  previews: cs.DOM.by_tag("aside")[0]!,
+  previews: ins.DOM.by_tag("aside")[0]!,
 
-  insert_into_sidebar(_source: cs.File): HTMLImageElement | HTMLVideoElement {
+  insert_into_sidebar(_source: ins.File): HTMLImageElement | HTMLVideoElement {
     /*
       Inserts a media file into the sidebar as an
       img or vid element.
     */
 
     let element: HTMLImageElement | HTMLVideoElement
-    if (bn.EXTENSION_TO_MEDIA[_source.extension()] === bn.MediaT.IMAGE)
+    if (bn.EXTENSION_TO_MEDIA[_source.ext()] === bn.MediaT.IMAGE)
       element = document.createElement("img")
-    else if (bn.EXTENSION_TO_MEDIA[_source.extension()] === bn.MediaT.VIDEO) {
+    else if (bn.EXTENSION_TO_MEDIA[_source.ext()] === bn.MediaT.VIDEO) {
       element = document.createElement("video")
       element.muted = true
       element.loop = true
@@ -47,7 +41,7 @@ const UI = {
       element.addEventListener("mouseout", () => (element as HTMLVideoElement).pause())
     }
     else
-      throw new bn.A36Err(`Unsupported media type for preview: '${_source.extension()}'`)
+      throw new bn.A36Err(`Unsupported media type for preview: '${_source.ext()}'`)
     element.src = _source.isAt
     element.onclick = () => UI.preview_portrayal_onclick_event(element)
     element.classList.add("preview") // For styling
@@ -63,7 +57,7 @@ const UI = {
     /*
       Remove previous preview target and replace with own
     */
-    cs.DOM.by_id(UI.previewTargetID, HTMLElement).remove()
+    ins.DOM.by_id(UI.previewTargetID, HTMLElement).remove()
     let newElement: typeof _selfHtml
     if (_selfHtml instanceof HTMLVideoElement) {
       newElement = document.createElement("video")
@@ -72,15 +66,15 @@ const UI = {
     }
     else
       newElement = document.createElement("img")
-    cs.DOM.by_tag("main").at(0)!.appendChild(newElement)
+    ins.DOM.by_tag("main").at(0)!.appendChild(newElement)
     newElement.src = _selfHtml.src
     newElement.id = UI.previewTargetID
   },
 
 
   // Origin select 
-  originSelect: cs.DOM.by_id("origin-select", HTMLInputElement),
-  originList: cs.DOM.by_id("origin-list", HTMLDataListElement),
+  originSelect: ins.DOM.by_id("origin-select", HTMLInputElement),
+  originList: ins.DOM.by_id("origin-list", HTMLDataListElement),
 
   set_origin_datalist(): void {
     for (const origin of bn.list_origins()) {
@@ -97,8 +91,8 @@ const UI = {
 
 
   // Persona select
-  personaSelect: cs.DOM.by_id("persona-select", HTMLInputElement),
-  personaList: cs.DOM.by_id("persona-list", HTMLDataListElement),
+  personaSelect: ins.DOM.by_id("persona-select", HTMLInputElement),
+  personaList: ins.DOM.by_id("persona-list", HTMLDataListElement),
 
   set_persona_datalist(): void {
     /*
@@ -125,13 +119,13 @@ const UI = {
 
 
   // Confirm button
-  confirmButton: cs.DOM.by_id("confirm", HTMLButtonElement), // Onclick event is set outside
+  confirmButton: ins.DOM.by_id("confirm", HTMLButtonElement), // Onclick event is set outside
 
   create_new_portrayal_by_user(): void {
-    const persona: bn.Persona = cs.or_err(bn.find_origin(UI.originSelect.value)?.find_persona(UI.personaSelect.value))
+    const persona: bn.Persona = ins.or_err(bn.find_origin(UI.originSelect.value)?.find_persona(UI.personaSelect.value))
     const previewElement = document.getElementById(UI.previewTargetID)! as HTMLImageElement | HTMLVideoElement
-    console.log("DEBUG: ", bn.create_portrayal(persona, selectedTags, new cs.File(false, decodeURI(cs.rm_fileprotocol_from_src(previewElement.src)))).where().isAt)
-    for (const previewOriginal of cs.DOM.by_class("preview"))
+    console.log("DEBUG: ", bn.create_portrayal(persona, selectedTags, new ins.File(false, decodeURI(ins.rm_fileprotocol_from_src(previewElement.src)))).where().isAt)
+    for (const previewOriginal of ins.DOM.by_class("preview"))
       if (previewOriginal instanceof HTMLImageElement || previewOriginal instanceof HTMLVideoElement)
         if (previewOriginal.src === previewElement.src)
           previewOriginal.remove()
@@ -190,9 +184,9 @@ const UI = {
   },
 
   init_all_tag_buttons(): void {
-    for (const [tagAsChar, _] of cs.entries(bn.TAGS_LOOKUP)) {
+    for (const [tagAsChar, _] of ins.entries(bn.TAGS_LOOKUP)) {
       const floatingButton = this.create_tag_button_in_dom(tagAsChar)
-      cs.DOM.by_id("tags-map", HTMLElement).appendChild(floatingButton)
+      ins.DOM.by_id("tags-map", HTMLElement).appendChild(floatingButton)
       this.tagButtons.set(tagAsChar, floatingButton)
     }
   },
@@ -210,10 +204,10 @@ UI.set_confirm_button_onclick()
 
 // Make shift init
 for (const media of bn.UNSORTED_FOLDER.list())
-  UI.insert_into_sidebar(new cs.File(false, media.isAt))
+  UI.insert_into_sidebar(new ins.File(false, media.isAt))
 
 
 
 // Stupid work around to give html access to module
-cs.DOM.by_id(UI.previewTargetID).innerHTML = `Took: ${performance.now() - timeStart} idk`
+ins.DOM.by_id(UI.previewTargetID).innerHTML = `Took: ${String(performance.now() - timeStart).slice(0, 5)} ms`
 Object.assign(window, { })
